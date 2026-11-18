@@ -128,6 +128,10 @@ else. Clone the repository and run all commands from its root.
 ./gradlew :composeApp:run
 ```
 
+On an Apple Silicon Mac you can instead download `SoundDrop-1.0.0-macOS-AppleSilicon.dmg` from the
+[latest release](https://github.com/tim1105neumann/sounddrop/releases/latest). It is not notarized, so on
+the first launch right-click the app and choose **Open**.
+
 Native installers: `./gradlew :composeApp:packageDistributionForCurrentOS` (output in
 `composeApp/build/compose/binaries`).
 
