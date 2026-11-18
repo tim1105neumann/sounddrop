@@ -159,9 +159,10 @@ Requirements: macOS with Xcode 16 or newer.
 1. Open `iosApp/iosApp.xcodeproj` in Xcode.
 2. Simulator: pick any iPhone simulator and press **Run**. The first build compiles the Kotlin framework
    and takes a few minutes. The simulator uses the Mac's microphone and speakers.
-3. Real iPhone: set your (free) Apple developer team in `iosApp/Configuration/Config.xcconfig`
-   (`TEAM_ID=...`) or under *Signing & Capabilities*, connect the phone and press **Run**. Allow
-   microphone access when asked.
+3. Real iPhone: create `iosApp/Configuration/Local.xcconfig` (git-ignored) containing
+   `TEAM_ID=<your team ID>` — a free Apple ID "Personal Team" works — or pick the team under
+   *Signing & Capabilities*. Connect the phone, enable *Developer Mode* on it if asked, and press **Run**.
+   Allow microphone access when asked.
 
 ### Android
 
