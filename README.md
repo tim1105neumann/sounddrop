@@ -1,0 +1,184 @@
+# SoundDrop
+
+**Send text, links, Wi-Fi logins and drawings between any devices — over sound.**
+
+SoundDrop is an acoustic modem written in pure Kotlin. A browser tab can chirp a link to an iPhone,
+a laptop can pass a Wi-Fi password to an Android phone, and one drawing can reach every device in a
+classroom at once. No network, no Bluetooth, no pairing, no accounts: just a speaker and a microphone.
+
+The modem, the protocol, the error correction and the complete Compose Multiplatform UI are **shared
+Kotlin code**. Each platform only contributes the few lines that move samples to the speaker and from
+the microphone.
+
+[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+· License: MIT
+
+<p>
+  <img src="docs/images/send-phone.png" width="240" alt="Send screen">
+  <img src="docs/images/listen-phone.png" width="240" alt="Listen screen with a received sketch and link">
+  <img src="docs/images/ios-simulator.png" width="240" alt="SoundDrop running on the iOS simulator">
+</p>
+
+<!-- TODO before submission: add Android screenshots, the screencast link and the GitHub Pages URL. -->
+
+## Try it in 30 seconds
+
+1. Open the web version (GitHub Pages, see [Web](#web-browser)) or run the desktop app.
+2. Open the **Lab** tab. It runs the real modem through a simulated room — no microphone needed.
+   Press **Transmit**, then drag the noise and echo sliders and press **Break it**.
+3. With two devices: press **Start listening** on one, type a message on the other and press
+   **Send over sound**.
+
+## Features
+
+| | |
+|---|---|
+| **Send / Listen** | Text, links (open with one tap), Wi-Fi credentials (QR-code compatible format) and sketches. Live spectrogram, input meter and progress while receiving. |
+| **Sketch broadcast** | Draw something; it is simplified and compressed to fit into one frame and replays stroke by stroke on every listening device in the room. |
+| **Loopback Lab** | Sends a message through a software room with adjustable noise, echo, clock mismatch, 44.1/48 kHz mismatch and noise bursts, then shows every stage: bytes on air (header, data, CRC, parity), the spectrogram, every tone decision, and which bytes Reed–Solomon repaired. **Break it** lowers the SNR until decoding fails. |
+| **Two speeds** | *Robust* (125 bit/s, survives echoey rooms) and *Fast* (250 bit/s, for devices close together). |
+| **Adaptive UI** | Navigation bar on phones, navigation rail on wide screens, light and dark theme. |
+
+<img src="docs/images/lab-wide.png" width="720" alt="Loopback Lab showing bytes, spectrogram and tone decisions">
+
+## How it works
+
+```
+ bytes ──► CRC-32 ──► Reed–Solomon ──► 2 tones per byte ──► chirp + header + symbols ──► speaker
+                                                                                           │ air
+ bytes ◄── CRC check ◄── RS decode (errors + erasures) ◄── Goertzel tone detection ◄── matched filter ◄── mic
+```
+
+* **Preamble.** Every frame starts with a 0.2 s linear chirp (1.5 → 5 kHz). The receiver finds it with
+  an FFT overlap-save matched filter, normalised by signal energy, which gives sample-accurate timing
+  even in heavy noise (the end-to-end tests decode at 0 dB signal-to-noise ratio).
+* **Modulation: dual-band 16-FSK.** Each symbol plays one of 16 tones in band A (1875–3281 Hz) and one of
+  16 tones in band B (3469–4875 Hz) at the same time — 4 bits each, so **one symbol is exactly one
+  byte**. Tones are Gray-coded and 93.75 Hz apart, a whole multiple of 1 / analysis window, so they are
+  orthogonal. Oscillators are phase-continuous, so there are no clicks.
+* **Guard interval.** The first third of every symbol is skipped by the receiver, so room echo of the
+  previous symbol has time to fade.
+* **Sample-rate independence.** All timing is defined in seconds and tones are measured with Goertzel
+  filters at their exact frequencies, so a 44.1 kHz phone and a 48 kHz laptop understand each other
+  without resampling.
+* **Error correction.** The header (version, profile, type, length) is protected by RS(7,3). The payload
+  gets a CRC-32 and about 50 % Reed–Solomon parity over GF(256) (Berlekamp–Massey, Chien search,
+  Forney). Symbols whose two strongest tones are too close are passed to the decoder as *erasures*,
+  which doubles the number of bytes it can repair.
+
+Full details: [docs/PROTOCOL.md](docs/PROTOCOL.md) <!-- TODO: write once the protocol is frozen -->
+
+## Architecture
+
+```
+modem/            pure Kotlin Multiplatform library — commonMain only, explicit API, no dependencies
+  dsp/            FFT, Goertzel, windows, chirp, spectrogram
+  fec/            GF(256), Reed–Solomon (errors + erasures), CRC-32
+  protocol/       profiles, tone plan, Gray code, frame header, frame layout
+  tx/ rx/         modulator, preamble detector, symbol demodulator, streaming decoder
+  channel/        channel simulator (noise, echo, drift, resampling, bursts)
+  payload/        text / link / Wi-Fi / sketch codecs
+composeApp/
+  commonMain/     the whole UI and the TransceiverViewModel / LabViewModel
+  jvmMain/        javax.sound audio engine + desktop entry point
+  wasmJsMain/     Web Audio engine (AudioWorklet capture) + browser entry point
+  iosMain/        AVAudioEngine audio engine + UIViewController entry point
+iosApp/           Xcode project hosting the Compose UI
+```
+
+The only platform abstraction is one small interface:
+
+```kotlin
+interface AudioEngine {
+    suspend fun play(samples: FloatArray, sampleRate: Int)
+    fun capture(): Flow<AudioChunk>
+}
+```
+
+### Shared code
+
+Generated with `./gradlew sharedCodeReport` (non-blank, non-comment lines):
+
+| Source set | Lines of code |
+|---|---:|
+| modem/commonMain | 1295 |
+| composeApp/commonMain | 1621 |
+| composeApp/jvmMain | 85 |
+| composeApp/wasmJsMain (incl. worklet JS) | 214 |
+| composeApp/iosMain | 189 |
+| iosApp (Swift) | 24 |
+
+**85 % of the production code is shared** — every line of the modem and every screen. Tests
+(`commonTest`) run unchanged on the JVM, Kotlin/Wasm (Node.js and browser) and the iOS simulator.
+
+## Running it
+
+Requirements: JDK 17 or newer (21 recommended) on the `PATH`. The Gradle wrapper downloads everything
+else. Clone the repository and run all commands from its root.
+
+### Desktop (macOS, Windows, Linux)
+
+```bash
+./gradlew :composeApp:run
+```
+
+Native installers: `./gradlew :composeApp:packageDistributionForCurrentOS` (output in
+`composeApp/build/compose/binaries`).
+
+> **macOS microphone permission:** the permission prompt is shown for the app that launched Gradle
+> (Terminal, iTerm or IntelliJ). If listening shows an error or the level meter stays flat, allow that
+> app under *System Settings → Privacy & Security → Microphone* and restart it.
+
+### Web browser
+
+Hosted version: deployed to GitHub Pages by `.github/workflows/pages.yml`.
+<!-- TODO: put the final https://<user>.github.io/<repo>/ URL here. -->
+
+Run locally:
+
+```bash
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun
+```
+
+This opens `http://localhost:8080`. Requires a browser with WasmGC: Chrome/Edge 119+, Firefox 120+,
+Safari 18.2+. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
+browser allows audio.
+
+### iOS
+
+Requirements: macOS with Xcode 16 or newer.
+
+1. Open `iosApp/iosApp.xcodeproj` in Xcode.
+2. Simulator: pick any iPhone simulator and press **Run**. The first build compiles the Kotlin framework
+   and takes a few minutes. The simulator uses the Mac's microphone and speakers.
+3. Real iPhone: set your (free) Apple developer team in `iosApp/Configuration/Config.xcconfig`
+   (`TEAM_ID=...`) or under *Signing & Capabilities*, connect the phone and press **Run**. Allow
+   microphone access when asked.
+
+### Android
+
+<!-- TODO: Android target is being added. -->
+Coming soon.
+
+### Tests and code style
+
+```bash
+./gradlew allTests        # modem + app tests on JVM, Wasm (Node + browser) and iOS simulator
+./gradlew ktlintCheck     # Kotlin coding conventions (ktlint_official)
+```
+
+Optional extras:
+
+* `SOUNDDROP_AIR_TEST=1 ./gradlew :composeApp:jvmTest --tests '*OverTheAirTest*'` plays a frame through
+  the real speaker and decodes it from the real microphone (turn the volume up).
+* `SOUNDDROP_SCREENSHOTS=/some/dir ./gradlew :composeApp:jvmTest` renders the screens to PNG headlessly.
+
+## Tips for a good transmission
+
+<!-- TODO: replace with measured distances after real-device testing. -->
+* Turn the sender's volume up and use the built-in speaker.
+* If a message is "heard but too damaged", move closer or switch to *Robust*.
+
+## License
+
+[MIT](LICENSE)
