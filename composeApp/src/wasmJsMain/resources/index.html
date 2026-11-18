@@ -112,6 +112,60 @@
                 "Browser: " + navigator.userAgent;
         }
 
+        // With "?debug" in the address, console output and graphics checks are shown on the page itself, so
+        // problems can be diagnosed on phones, where no developer console is available.
+        if (/[?&]debug\b/.test(location.search)) {
+            var lines = [];
+            var panel = document.createElement("pre");
+            panel.style.cssText =
+                "position:fixed;left:0;right:0;bottom:0;max-height:55%;overflow:auto;margin:0;padding:8px;" +
+                "z-index:20;font:11px/1.35 ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;" +
+                "background:rgba(0,0,0,0.85);color:#d8ffd8;";
+            var record = function (level, args) {
+                var text = Array.prototype.map.call(args, function (arg) {
+                    try {
+                        return arg instanceof Error ? arg.stack || String(arg) :
+                            typeof arg === "object" ? JSON.stringify(arg) : String(arg);
+                    } catch (e) {
+                        return String(arg);
+                    }
+                }).join(" ");
+                lines.push(((performance.now() / 1000).toFixed(1)) + "s " + level + ": " + text.slice(0, 2000));
+                if (lines.length > 300) lines.shift();
+                panel.textContent = lines.join("\n");
+                if (!panel.isConnected) document.documentElement.appendChild(panel);
+            };
+            ["log", "info", "warn", "error"].forEach(function (level) {
+                var original = console[level];
+                console[level] = function () {
+                    record(level, arguments);
+                    return original.apply(console, arguments);
+                };
+            });
+            window.addEventListener("error", function (event) {
+                record("uncaught", [event.error || event.message]);
+            });
+            window.addEventListener("unhandledrejection", function (event) {
+                record("rejection", [event.reason]);
+            });
+            var probe = document.createElement("canvas");
+            var gl = probe.getContext("webgl2");
+            record("info", [
+                "UA: " + navigator.userAgent +
+                "\nWebAssembly: " + typeof WebAssembly + ", GC: " + (typeof WebAssembly === "object" && supportsWasmGc()) +
+                "\nWebGL2: " + (gl ? gl.getParameter(gl.VERSION) + ", max texture " + gl.getParameter(gl.MAX_TEXTURE_SIZE) : "unavailable") +
+                "\nWindow: " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio
+            ]);
+            setTimeout(function () {
+                var canvas = findCanvas(document);
+                if (!canvas) return record("info", ["no canvas after 5 s"]);
+                var rect = canvas.getBoundingClientRect();
+                var context = canvas.getContext("webgl2");
+                record("info", ["canvas " + canvas.width + "x" + canvas.height + ", css " + Math.round(rect.width) +
+                    "x" + Math.round(rect.height) + ", WebGL2 " + (context ? (context.isContextLost() ? "lost" : "ok") : "none")]);
+            }, 5000);
+        }
+
         if (typeof WebAssembly !== "object") {
             fail("WebAssembly is not available (disabled or unsupported).");
         }
@@ -121,16 +175,29 @@
         window.addEventListener("unhandledrejection", function (event) {
             fail(String(event.reason));
         });
-        new MutationObserver(function (_, observer) {
-            if (document.querySelector("canvas")) {
+        // Compose renders into a canvas inside a shadow root, which querySelector on the document cannot see.
+        function findCanvas(root) {
+            var elements = root.querySelectorAll("*");
+            for (var i = 0; i < elements.length; i++) {
+                var element = elements[i];
+                if (element.tagName === "CANVAS") return element;
+                var nested = element.shadowRoot && findCanvas(element.shadowRoot);
+                if (nested) return nested;
+            }
+            return null;
+        }
+
+        var startedAt = Date.now();
+        var startCheck = setInterval(function () {
+            if (findCanvas(document)) {
                 // Keep the element: errors after start-up are still shown on top of the app.
                 if (!status.classList.contains("failed")) status.style.display = "none";
-                observer.disconnect();
+                clearInterval(startCheck);
+            } else if (Date.now() - startedAt > 30000) {
+                fail("The app did not start within 30 seconds.");
+                clearInterval(startCheck);
             }
-        }).observe(document.body, { childList: true, subtree: true });
-        setTimeout(function () {
-            if (!document.querySelector("canvas")) fail("The app did not start within 30 seconds.");
-        }, 30000);
+        }, 250);
     })();
 </script>
 <!-- Loaded at the end of <body>: the app attaches to document.body, which must exist by then. -->
