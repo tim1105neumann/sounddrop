@@ -156,6 +156,38 @@
                 "\nWebGL2: " + (gl ? gl.getParameter(gl.VERSION) + ", max texture " + gl.getParameter(gl.MAX_TEXTURE_SIZE) : "unavailable") +
                 "\nWindow: " + innerWidth + "x" + innerHeight + " @" + devicePixelRatio
             ]);
+            // Every step of loading, so a hang can be located: downloads, WebAssembly compilation, a heartbeat.
+            var debugFetch = window.fetch;
+            window.fetch = function (input) {
+                var url = String((input && input.url) || input).split("/").pop();
+                record("fetch", ["start " + url]);
+                return debugFetch.apply(this, arguments).then(function (response) {
+                    record("fetch", [response.status + " " + url + " (" + response.headers.get("content-length") + " bytes)"]);
+                    return response;
+                }, function (error) {
+                    record("fetch", ["failed " + url + ": " + error]);
+                    throw error;
+                });
+            };
+            ["compile", "compileStreaming", "instantiate", "instantiateStreaming"].forEach(function (name) {
+                var original = WebAssembly && WebAssembly[name];
+                if (!original) return;
+                WebAssembly[name] = function () {
+                    record("wasm", [name + " start"]);
+                    return original.apply(WebAssembly, arguments).then(function (result) {
+                        record("wasm", [name + " done"]);
+                        return result;
+                    }, function (error) {
+                        record("wasm", [name + " failed: " + error]);
+                        throw error;
+                    });
+                };
+            });
+            var ticks = 0;
+            var heartbeat = setInterval(function () {
+                record("tick", [++ticks]);
+                if (ticks >= 12) clearInterval(heartbeat);
+            }, 1000);
             setTimeout(function () {
                 var canvas = findCanvas(document);
                 if (!canvas) return record("info", ["no canvas after 5 s"]);
