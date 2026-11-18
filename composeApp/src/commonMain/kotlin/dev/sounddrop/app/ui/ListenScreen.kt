@@ -147,6 +147,11 @@ private fun InboxItem(message: ReceivedMessage) {
                         }
                     }
                 }
+
+                is Payload.Sketch -> {
+                    Text("Sketch", style = MaterialTheme.typography.bodyLarge)
+                    SketchReplay(payload.strokes)
+                }
             }
             Text(
                 "${message.profile} mode · ${message.correctedSymbols} of ${message.symbolCount} symbols repaired",

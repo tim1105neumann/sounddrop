@@ -28,6 +28,11 @@ public sealed interface Payload {
         public enum class Security { WPA, WEP, NONE }
     }
 
+    /** A small line drawing on a [SketchCodec.GRID] × [SketchCodec.GRID] grid. */
+    public data class Sketch(
+        val strokes: List<List<SketchPoint>>,
+    ) : Payload
+
     public companion object {
         /** On-air type of [payload]. */
         public fun typeOf(payload: Payload): Int =
@@ -35,6 +40,7 @@ public sealed interface Payload {
                 is Text -> TYPE_TEXT
                 is Link -> TYPE_LINK
                 is Wifi -> TYPE_WIFI
+                is Sketch -> TYPE_SKETCH
             }
 
         /** Serialises [payload]; the result may exceed the frame limit, callers must check. */
@@ -43,6 +49,7 @@ public sealed interface Payload {
                 is Text -> payload.text.encodeToByteArray()
                 is Link -> payload.url.encodeToByteArray()
                 is Wifi -> WifiFormat.format(payload).encodeToByteArray()
+                is Sketch -> SketchCodec.encode(payload.strokes)
             }
 
         /** Parses a received payload, or returns `null` for unknown types or malformed data. */
@@ -54,12 +61,14 @@ public sealed interface Payload {
                 TYPE_TEXT -> Text(bytes.decodeToString())
                 TYPE_LINK -> Link(bytes.decodeToString())
                 TYPE_WIFI -> WifiFormat.parse(bytes.decodeToString())
+                TYPE_SKETCH -> SketchCodec.decode(bytes)?.let(::Sketch)
                 else -> null
             }
 
         private const val TYPE_TEXT = 0
         private const val TYPE_LINK = 1
         private const val TYPE_WIFI = 2
+        private const val TYPE_SKETCH = 3
     }
 }
 

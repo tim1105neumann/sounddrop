@@ -18,9 +18,12 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import dev.sounddrop.app.Outgoing
 import dev.sounddrop.app.TransceiverState
 import dev.sounddrop.modem.payload.Payload
+import dev.sounddrop.modem.payload.SketchCodec
 import dev.sounddrop.modem.protocol.FrameHeader
 import dev.sounddrop.modem.protocol.FrameLayout
 import dev.sounddrop.modem.protocol.ModemProfile
@@ -44,6 +48,7 @@ private enum class PayloadKind(
     Text("Text"),
     Link("Link"),
     Wifi("Wi-Fi"),
+    Sketch("Sketch"),
 }
 
 /** Compose a message and play it through the speaker. */
@@ -59,12 +64,19 @@ fun SendScreen(
     var ssid by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var profile by rememberSaveable { mutableStateOf(ModemProfile.Robust) }
+    val strokes = remember { mutableStateListOf<List<Offset>>() }
+    val sketch by remember {
+        derivedStateOf {
+            SketchCodec.fit(strokes.map { stroke -> stroke.map { it.x to it.y } }, FrameHeader.MAX_PAYLOAD)
+        }
+    }
 
     val payload =
         when (kind) {
             PayloadKind.Text -> Payload.Text(text)
             PayloadKind.Link -> Payload.Link(url.trim())
             PayloadKind.Wifi -> Payload.Wifi(ssid, password)
+            PayloadKind.Sketch -> Payload.Sketch(sketch)
         }
     val size = Payload.encode(payload).size
     val fits = size <= FrameHeader.MAX_PAYLOAD
@@ -101,6 +113,21 @@ fun SendScreen(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+
+            PayloadKind.Sketch -> {
+                SketchPad(
+                    strokes = strokes,
+                    onStrokeStart = { strokes += listOf(it) },
+                    onStrokeMove = { point -> strokes[strokes.lastIndex] = strokes.last() + point },
+                    preview = sketch,
+                )
+                Text(
+                    "Draw something. The orange line is the simplified version that goes on air; " +
+                        "every listening device in the room receives it at once.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                TextButton(onClick = { strokes.clear() }, enabled = strokes.isNotEmpty()) { Text("Clear drawing") }
+            }
 
             PayloadKind.Wifi -> {
                 OutlinedTextField(
