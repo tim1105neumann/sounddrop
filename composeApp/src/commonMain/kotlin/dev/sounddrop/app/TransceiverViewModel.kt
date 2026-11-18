@@ -111,7 +111,8 @@ class TransceiverViewModel(
                 engine
                     .capture()
                     .catch { e ->
-                        val message = if (e is MicrophoneUnavailableException) e.message else "Microphone error: ${e.message}"
+                        val message =
+                            if (e is MicrophoneUnavailableException) e.message else "Microphone error: ${e.message}"
                         mutableState.update { it.copy(error = message) }
                     }.collect { chunk ->
                         val current =
