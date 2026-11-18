@@ -199,7 +199,7 @@ Optional extras:
 
 ## Tested on
 
-* iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), both directions, over the air.
+* iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), over the air.
 * Android emulator (API 37), iOS simulator, desktop JVM and WebKit/Chromium for the UI.
 
 ## Tips for a good transmission
