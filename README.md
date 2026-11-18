@@ -23,8 +23,8 @@ the microphone.
 
 ## Try it in 30 seconds
 
-1. Open the web version at **https://tim1105neumann.github.io/sounddrop/** in Chrome or Firefox, or run the
-   desktop app.
+1. Open the web version at **https://tim1105neumann.github.io/sounddrop/** in any current browser
+   (Chrome, Edge, Firefox or Safari, also on phones), or run the desktop app.
 2. Open the **Lab** tab. It runs the real modem through a simulated room — no microphone needed.
    Press **Transmit**, then drag the noise and echo sliders and press **Break it**.
 3. With two devices: press **Start listening** on one, type a message on the other and press
@@ -150,15 +150,22 @@ Run locally:
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
 ```
 
-This opens `http://localhost:8080`. **Use Chrome/Edge 119+ or Firefox 120+** (WebAssembly GC). Safari 18.2+
-supports WebAssembly GC as well, but showed a blank page on one of our test Macs, so Chrome is recommended. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
-browser allows audio.
+This opens `http://localhost:8080`. It needs a browser with WebAssembly GC: Chrome/Edge 119+, Firefox 120+ or
+Safari 18.2+ (macOS and iOS). Microphone access only works on `https://` or `localhost`. Click anywhere once
+so the browser allows audio.
+
+**Safari 27.2 workaround:** WebKit 27.2 passes some numbers as NaN when JavaScript tail-calls into WebAssembly
+([WebKit bug 329421](https://bugs.webkit.org/show_bug.cgi?id=329421),
+[CMP-10986](https://youtrack.jetbrains.com/issue/CMP-10986)), which leaves every Compose web app as a white
+page. A small webpack loader (`composeApp/webpack/skiko-no-tail-call.cjs`) rewrites Skiko's 996 export wrappers
+so they are no longer tail calls, and the build fails if one survives minification.
 
 In the browser, Kotlin coroutines run on a single thread, so `Dispatchers.Default` shares the main thread
 with the UI: decoding and the Lab's simulations run between frames instead of in parallel.
 
-> If the page stays blank or shows "SoundDrop could not start", open it in Chrome or Firefox. The error
-> page lists diagnostics (browser, WebAssembly support, failed downloads) that help to find the cause.
+> If the page stays blank or shows "SoundDrop could not start", the error page lists diagnostics (browser,
+> WebAssembly support, failed downloads). Adding `?debug` to the address shows a log on the page itself,
+> including on phones.
 
 ### iOS
 
@@ -212,6 +219,7 @@ Optional extras:
 
 * iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), over the air in both directions:
   text in Robust and Melodic mode, and sketches.
+* Web app in Safari on macOS and in Safari and Chrome on iOS (all Safari 27.2 / WebKit), after the workaround above.
 * Android emulator (API 37), iOS simulator, desktop JVM and WebKit/Chromium for the UI.
 
 ## Tips for a good transmission
