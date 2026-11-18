@@ -10,7 +10,7 @@ The modem, the protocol, the error correction and the complete Compose Multiplat
 Kotlin code**. Each platform only contributes the few lines that move samples to the speaker and from
 the microphone.
 
-[![CI](../../actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![CI](https://github.com/tim1105neumann/sounddrop/actions/workflows/ci.yml/badge.svg)](https://github.com/tim1105neumann/sounddrop/actions/workflows/ci.yml)
 · License: MIT
 
 <p>
@@ -19,11 +19,11 @@ the microphone.
   <img src="docs/images/ios-simulator.png" width="240" alt="SoundDrop running on the iOS simulator">
 </p>
 
-<!-- TODO before submission: add Android screenshots, the screencast link and the GitHub Pages URL. -->
+<!-- TODO before submission: add Android screenshots and the screencast link. -->
 
 ## Try it in 30 seconds
 
-1. Open the web version (GitHub Pages, see [Web](#web-browser)) or run the desktop app.
+1. Open the web version at **https://tim1105neumann.github.io/sounddrop/** or run the desktop app.
 2. Open the **Lab** tab. It runs the real modem through a simulated room — no microphone needed.
    Press **Transmit**, then drag the noise and echo sliders and press **Break it**.
 3. With two devices: press **Start listening** on one, type a message on the other and press
@@ -131,8 +131,8 @@ Native installers: `./gradlew :composeApp:packageDistributionForCurrentOS` (outp
 
 ### Web browser
 
-Hosted version: deployed to GitHub Pages by `.github/workflows/pages.yml`.
-<!-- TODO: put the final https://<user>.github.io/<repo>/ URL here. -->
+Hosted version: **https://tim1105neumann.github.io/sounddrop/** (deployed from `main` by
+`.github/workflows/pages.yml`).
 
 Run locally:
 
