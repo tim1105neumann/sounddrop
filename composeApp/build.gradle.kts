@@ -52,7 +52,7 @@ kotlin {
 
 compose.desktop {
     application {
-        mainClass = "dev.sounddrop.app.MainKt"
+        mainClass = "dev.sounddrop.app.DesktopMainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "SoundDrop"
