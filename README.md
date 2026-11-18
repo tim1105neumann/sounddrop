@@ -67,7 +67,7 @@ the microphone.
   Forney). Symbols whose two strongest tones are too close are passed to the decoder as *erasures*,
   which doubles the number of bytes it can repair.
 
-Full details: [docs/PROTOCOL.md](docs/PROTOCOL.md) <!-- TODO: write once the protocol is frozen -->
+Full specification: [docs/PROTOCOL.md](docs/PROTOCOL.md)
 
 ## Architecture
 
@@ -196,6 +196,11 @@ Optional extras:
 * `SOUNDDROP_AIR_TEST=1 ./gradlew :composeApp:jvmTest --tests '*OverTheAirTest*'` plays a frame through
   the real speaker and decodes it from the real microphone (turn the volume up).
 * `SOUNDDROP_SCREENSHOTS=/some/dir ./gradlew :composeApp:jvmTest` renders the screens to PNG headlessly.
+
+## Tested on
+
+* iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), both directions, over the air.
+* Android emulator (API 37), iOS simulator, desktop JVM and WebKit/Chromium for the UI.
 
 ## Tips for a good transmission
 
