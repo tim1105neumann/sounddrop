@@ -149,6 +149,9 @@ This opens `http://localhost:8080`. **Use Chrome/Edge 119+ or Firefox 120+** (We
 supports WebAssembly GC as well, but showed a blank page on one of our test Macs, so Chrome is recommended. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
 browser allows audio.
 
+In the browser, Kotlin coroutines run on a single thread, so `Dispatchers.Default` shares the main thread
+with the UI: decoding and the Lab's simulations run between frames instead of in parallel.
+
 > If the page stays blank or shows "SoundDrop could not start", open it in Chrome or Firefox. The error
 > page lists diagnostics (browser, WebAssembly support, failed downloads) that help to find the cause.
 

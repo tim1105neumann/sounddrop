@@ -190,6 +190,8 @@ class LabViewModel : ViewModel() {
         var outcome: LabOutcome = LabOutcome.NoSync
         var syncScore: Float? = null
         var corrected = emptySet<Int>()
+        // A decoded header means Reed–Solomon repaired every header byte that was heard wrong.
+        var headerDecoded = false
         // Only the first frame matters; a simulated run contains exactly one.
         for (event in events) {
             when (event) {
@@ -217,13 +219,13 @@ class LabViewModel : ViewModel() {
                     if (event.reason != DecoderEvent.FailureReason.InvalidHeader) break
                 }
 
-                is DecoderEvent.HeaderDecoded -> Unit
+                is DecoderEvent.HeaderDecoded -> headerDecoded = true
             }
         }
         val dataSize = tx.header.length
         val symbols =
             tx.headerSymbols.mapIndexed { i, byte ->
-                LabSymbol(byte.toInt() and 0xFF, ByteRole.Header, headerReadings[i], corrected = false)
+                LabSymbol(byte.toInt() and 0xFF, ByteRole.Header, headerReadings[i], corrected = headerDecoded)
             } +
                 tx.payloadSymbols.mapIndexed { i, byte ->
                     val role =

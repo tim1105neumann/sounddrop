@@ -21,13 +21,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -37,6 +39,7 @@ import dev.sounddrop.app.Outgoing
 import dev.sounddrop.app.TransceiverState
 import dev.sounddrop.modem.payload.Payload
 import dev.sounddrop.modem.payload.SketchCodec
+import dev.sounddrop.modem.payload.SketchPoint
 import dev.sounddrop.modem.payload.encode
 import dev.sounddrop.modem.protocol.FrameHeader
 import dev.sounddrop.modem.protocol.FrameLayout
@@ -52,6 +55,18 @@ private enum class PayloadKind(
     Sketch("Sketch"),
 }
 
+/** Saves free-hand strokes as flat `x, y, x, y, …` arrays, so a drawing survives rotation. */
+private val StrokesSaver =
+    listSaver<SnapshotStateList<List<Offset>>, FloatArray>(
+        save = { strokes -> strokes.map { stroke -> stroke.flatMap { listOf(it.x, it.y) }.toFloatArray() } },
+        restore = { saved ->
+            saved.map { flat -> List(flat.size / 2) { Offset(flat[2 * it], flat[2 * it + 1]) } }.toMutableStateList()
+        },
+    )
+
+private fun fitSketch(strokes: List<List<Offset>>): List<List<SketchPoint>> =
+    SketchCodec.fit(strokes.map { stroke -> stroke.map { it.x to it.y } }, FrameHeader.MAX_PAYLOAD)
+
 /** Compose a message and play it through the speaker. */
 @Composable
 fun SendScreen(
@@ -65,12 +80,9 @@ fun SendScreen(
     var ssid by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var profile by rememberSaveable { mutableStateOf(ModemProfile.Robust) }
-    val strokes = remember { mutableStateListOf<List<Offset>>() }
-    val sketch by remember {
-        derivedStateOf {
-            SketchCodec.fit(strokes.map { stroke -> stroke.map { it.x to it.y } }, FrameHeader.MAX_PAYLOAD)
-        }
-    }
+    val strokes = rememberSaveable(saver = StrokesSaver) { mutableStateListOf() }
+    // Simplifying is expensive, so it runs once per finished stroke rather than on every move.
+    var sketch by remember { mutableStateOf(fitSketch(strokes)) }
 
     val payload =
         when (kind) {
@@ -120,6 +132,7 @@ fun SendScreen(
                     strokes = strokes,
                     onStrokeStart = { strokes += listOf(it) },
                     onStrokeMove = { point -> strokes[strokes.lastIndex] = strokes.last() + point },
+                    onStrokeEnd = { sketch = fitSketch(strokes) },
                     preview = sketch,
                 )
                 Text(
@@ -127,7 +140,13 @@ fun SendScreen(
                         "every listening device in the room receives it at once.",
                     style = MaterialTheme.typography.bodySmall,
                 )
-                TextButton(onClick = { strokes.clear() }, enabled = strokes.isNotEmpty()) { Text("Clear drawing") }
+                TextButton(
+                    onClick = {
+                        strokes.clear()
+                        sketch = emptyList()
+                    },
+                    enabled = strokes.isNotEmpty(),
+                ) { Text("Clear drawing") }
             }
 
             PayloadKind.Wifi -> {

@@ -13,7 +13,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -37,9 +39,14 @@ fun SketchPad(
     strokes: List<List<Offset>>,
     onStrokeStart: (Offset) -> Unit,
     onStrokeMove: (Offset) -> Unit,
+    onStrokeEnd: () -> Unit,
     preview: List<List<SketchPoint>>,
     modifier: Modifier = Modifier,
 ) {
+    // The gesture detector is installed once, so it must always call the latest callbacks.
+    val currentOnStrokeStart by rememberUpdatedState(onStrokeStart)
+    val currentOnStrokeMove by rememberUpdatedState(onStrokeMove)
+    val currentOnStrokeEnd by rememberUpdatedState(onStrokeEnd)
     val ink = MaterialTheme.colorScheme.primary
     val simplified = MaterialTheme.colorScheme.secondary
     Canvas(
@@ -51,10 +58,12 @@ fun SketchPad(
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .pointerInput(Unit) {
                 detectDragGestures(
-                    onDragStart = { onStrokeStart(normalised(it, size.width.toFloat(), size.height.toFloat())) },
+                    onDragStart = { currentOnStrokeStart(normalised(it, size.width.toFloat(), size.height.toFloat())) },
+                    onDragEnd = { currentOnStrokeEnd() },
+                    onDragCancel = { currentOnStrokeEnd() },
                     onDrag = { change, _ ->
                         change.consume()
-                        onStrokeMove(normalised(change.position, size.width.toFloat(), size.height.toFloat()))
+                        currentOnStrokeMove(normalised(change.position, size.width.toFloat(), size.height.toFloat()))
                     },
                 )
             },
