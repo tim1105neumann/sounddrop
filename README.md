@@ -23,7 +23,8 @@ the microphone.
 
 ## Try it in 30 seconds
 
-1. Open the web version at **https://tim1105neumann.github.io/sounddrop/** or run the desktop app.
+1. Open the web version at **https://tim1105neumann.github.io/sounddrop/** in Chrome or Firefox, or run the
+   desktop app.
 2. Open the **Lab** tab. It runs the real modem through a simulated room — no microphone needed.
    Press **Transmit**, then drag the noise and echo sliders and press **Break it**.
 3. With two devices: press **Start listening** on one, type a message on the other and press
@@ -144,12 +145,12 @@ Run locally:
 ./gradlew :composeApp:wasmJsBrowserDevelopmentRun
 ```
 
-This opens `http://localhost:8080`. Requires a browser with WasmGC: Chrome/Edge 119+, Firefox 120+,
-Safari 18.2+. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
+This opens `http://localhost:8080`. **Use Chrome/Edge 119+ or Firefox 120+** (WebAssembly GC). Safari 18.2+
+supports WebAssembly GC as well, but showed a blank page on one of our test Macs, so Chrome is recommended. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
 browser allows audio.
 
-> **Safari shows "SoundDrop could not start"?** Lockdown Mode turns WebAssembly off. Allow the site via
-> *Safari → Settings for This Website → uncheck Enable Lockdown Mode*, or use Chrome or Firefox.
+> If the page stays blank or shows "SoundDrop could not start", open it in Chrome or Firefox. The error
+> page lists diagnostics (browser, WebAssembly support, failed downloads) that help to find the cause.
 
 ### iOS
 
