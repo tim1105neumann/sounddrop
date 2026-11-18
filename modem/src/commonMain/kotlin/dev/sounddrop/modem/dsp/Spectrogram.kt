@@ -8,7 +8,7 @@ import kotlin.math.log10
  */
 public class Spectrogram(
     public val sampleRate: Int,
-    public val minHz: Double = 1000.0,
+    public val minHz: Double = 500.0,
     public val maxHz: Double = 6000.0,
 ) {
     private val fft = Fft(FFT_SIZE)

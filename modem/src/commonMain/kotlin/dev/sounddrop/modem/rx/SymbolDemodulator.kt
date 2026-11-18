@@ -29,7 +29,10 @@ public class SymbolReading(
     public val powersB: FloatArray,
 )
 
-/** Measures the 32 tone powers of a symbol and picks the strongest tone in each band. */
+/**
+ * Measures the 32 tone powers of a symbol and picks the strongest tone in each band. For a
+ * melodic symbol, "band A" is the first note and "band B" the second.
+ */
 public class SymbolDemodulator(
     private val sampleRate: Int,
 ) {
@@ -45,14 +48,15 @@ public class SymbolDemodulator(
         symbolStart: Int,
         profile: ModemProfile,
     ): SymbolReading {
-        val from = symbolStart + layout.guardSamples(profile)
+        val fromA = symbolStart + layout.guardSamples(profile)
+        val fromB = if (profile.voicing == ModemProfile.Voicing.Melody) fromA + layout.slotSamples(profile) else fromA
         val powersA =
             FloatArray(TonePlan.TONES_PER_BAND) { tone ->
-                bandPower(samples, from, TonePlan.bandA(tone), profile)
+                bandPower(samples, fromA, TonePlan.frequency(profile.voicing, highNibble = true, tone), profile)
             }
         val powersB =
             FloatArray(TonePlan.TONES_PER_BAND) { tone ->
-                bandPower(samples, from, TonePlan.bandB(tone), profile)
+                bandPower(samples, fromB, TonePlan.frequency(profile.voicing, highNibble = false, tone), profile)
             }
         val (toneA, ratioA) = strongest(powersA)
         val (toneB, ratioB) = strongest(powersB)

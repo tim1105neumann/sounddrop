@@ -37,7 +37,8 @@ the microphone.
 | **Send / Listen** | Text, links (open with one tap), Wi-Fi credentials (QR-code compatible format) and sketches. Live spectrogram, input meter and progress while receiving. |
 | **Sketch broadcast** | Draw something; it is simplified and compressed to fit into one frame and replays stroke by stroke on every listening device in the room. |
 | **Loopback Lab** | Sends a message through a software room with adjustable noise, echo, clock mismatch, 44.1/48 kHz mismatch and noise bursts, then shows every stage: bytes on air (header, data, CRC, parity), the spectrogram, every tone decision, and which bytes Reed–Solomon repaired. **Break it** lowers the SNR until decoding fails. |
-| **Two speeds** | *Robust* (125 bit/s, survives echoey rooms) and *Fast* (250 bit/s, for devices close together). |
+| **Melodic mode** | Every byte becomes two plucked notes of a pentatonic scale, so a message plays as a little tune instead of beeps, and still decodes with the same error correction. |
+| **Three profiles** | *Robust* (125 bit/s, survives echoey rooms), *Fast* (250 bit/s, for devices close together) and *Melodic* (50 bit/s, sounds like music). |
 | **Adaptive UI** | Navigation bar on phones, navigation rail on wide screens, light and dark theme. |
 
 <img src="docs/images/lab-wide.png" width="720" alt="Loopback Lab showing bytes, spectrogram and tone decisions">

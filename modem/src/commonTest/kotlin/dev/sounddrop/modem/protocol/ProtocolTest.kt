@@ -40,4 +40,26 @@ class ProtocolTest {
         assertTrue(TonePlan.maxFrequencyHz <= FrameLayout.CHIRP_END_HZ)
         assertTrue(TonePlan.bandB(0) > TonePlan.bandA(TonePlan.TONES_PER_BAND - 1))
     }
+
+    @Test
+    fun melodicHeaderRoundTrips() {
+        val header = FrameHeader(ModemProfile.Melodic, type = 0, length = 42)
+        assertEquals(header, FrameHeader.decode(header.encode()))
+    }
+
+    @Test
+    fun melodicScaleIsThreeOctavesOfPentatonicNotes() {
+        val notes = (0 until MelodicScale.NOTES).map(MelodicScale::note)
+        assertEquals(523.25, notes.first(), 0.01)
+        assertEquals(8.0, notes.last() / notes.first(), 1e-9)
+        assertEquals(2.0, notes[5] / notes[0], 1e-9)
+        // No semitones: neighbouring notes are at least a whole tone apart.
+        notes.zipWithNext().forEach { (low, high) -> assertTrue(high / low > 1.12) }
+    }
+
+    @Test
+    fun melodicSymbolIsTwoNotes() {
+        assertEquals(2 * ModemProfile.Melodic.slotSeconds, ModemProfile.Melodic.symbolSeconds)
+        assertEquals(ModemProfile.Robust.slotSeconds, ModemProfile.Robust.symbolSeconds)
+    }
 }

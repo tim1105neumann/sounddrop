@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.sounddrop.modem.protocol.FrameHeader
+import dev.sounddrop.modem.protocol.MelodicScale
 import dev.sounddrop.modem.protocol.ModemProfile
 import dev.sounddrop.modem.protocol.TonePlan
 import kotlin.math.roundToInt
@@ -30,6 +31,10 @@ private val STEPS =
         "Goertzel filters" to
             "The receiver measures the exact tone frequencies instead of FFT bins, so 44.1 kHz and 48 kHz devices " +
             "understand each other without resampling.",
+        "Melodic mode" to
+            "Instead of a chord, every byte can also be played as two plucked notes, one per nibble, from three " +
+            "octaves of the pentatonic scale (C5 to C8). With no semitones in the scale, even random data sounds " +
+            "like a melody, and the receiver decodes it with the same filters and error correction.",
         "Reed–Solomon + CRC-32" to
             "About 50 % redundancy lets the receiver repair up to a quarter of the bytes — twice as many when it " +
             "knows which symbols sounded uncertain (erasures). A CRC-32 rejects anything it could not fix.",
@@ -67,7 +72,9 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         }
         Text(
             "Up to ${FrameHeader.MAX_PAYLOAD} bytes per message, tones between " +
-                "${TonePlan.bandA(0).roundToInt()} and ${TonePlan.maxFrequencyHz.roundToInt()} Hz.",
+                "${TonePlan.bandA(0).roundToInt()} and ${TonePlan.maxFrequencyHz.roundToInt()} Hz, " +
+                "melodic notes between ${MelodicScale.note(0).roundToInt()} and " +
+                "${MelodicScale.note(MelodicScale.NOTES - 1).roundToInt()} Hz.",
             style = MaterialTheme.typography.bodyMedium,
         )
     }

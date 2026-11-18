@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -67,7 +69,16 @@ private val StrokesSaver =
 private fun fitSketch(strokes: List<List<Offset>>): List<List<SketchPoint>> =
     SketchCodec.fit(strokes.map { stroke -> stroke.map { it.x to it.y } }, FrameHeader.MAX_PAYLOAD)
 
+private val ModemProfile.label: String
+    get() =
+        when (this) {
+            ModemProfile.Robust -> "Robust (room)"
+            ModemProfile.Fast -> "Fast (close by)"
+            ModemProfile.Melodic -> "Melodic (a tune)"
+        }
+
 /** Compose a message and play it through the speaker. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SendScreen(
     state: TransceiverState,
@@ -167,14 +178,16 @@ fun SendScreen(
                 )
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ModemProfile.entries.forEach { entry ->
-                FilterChip(
-                    selected = profile == entry,
-                    onClick = { profile = entry },
-                    label = { Text(if (entry == ModemProfile.Robust) "Robust (room)" else "Fast (close by)") },
-                )
+                FilterChip(selected = profile == entry, onClick = { profile = entry }, label = { Text(entry.label) })
             }
+        }
+        if (profile == ModemProfile.Melodic) {
+            Text(
+                "Every byte becomes two notes of a pentatonic scale, so your message plays as a little tune.",
+                style = MaterialTheme.typography.bodySmall,
+            )
         }
         val airtime = FrameLayout.airtimeSeconds(profile, size.coerceAtMost(FrameHeader.MAX_PAYLOAD))
         Text(

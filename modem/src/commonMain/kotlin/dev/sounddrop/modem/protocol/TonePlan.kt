@@ -26,6 +26,20 @@ public object TonePlan {
     /** Frequency of tone [index] in band B. */
     public fun bandB(index: Int): Double = BAND_B_BASE_HZ + index * SPACING_HZ
 
-    /** Highest frequency the data symbols use. */
+    /**
+     * Frequency that carries [tone] for the high or low nibble of a byte played with [voicing].
+     * Chords use band A and band B; melodies use the same scale for both nibbles.
+     */
+    public fun frequency(
+        voicing: ModemProfile.Voicing,
+        highNibble: Boolean,
+        tone: Int,
+    ): Double =
+        when (voicing) {
+            ModemProfile.Voicing.Chord -> if (highNibble) bandA(tone) else bandB(tone)
+            ModemProfile.Voicing.Melody -> MelodicScale.note(tone)
+        }
+
+    /** Highest frequency the chord symbols use. */
     public val maxFrequencyHz: Double get() = bandB(TONES_PER_BAND - 1)
 }

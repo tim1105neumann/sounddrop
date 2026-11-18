@@ -72,6 +72,7 @@ fun LabScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LabControls(
     state: LabState,
@@ -88,7 +89,7 @@ private fun LabControls(
                 label = { Text("Message") },
                 modifier = Modifier.fillMaxWidth(),
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ModemProfile.entries.forEach { profile ->
                     FilterChip(
                         selected = settings.profile == profile,

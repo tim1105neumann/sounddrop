@@ -56,6 +56,26 @@ class EndToEndTest {
     }
 
     @Test
+    fun cleanChannelMelodic() {
+        assertRoundTrip(ModemProfile.Melodic, ChannelConditions())
+    }
+
+    @Test
+    fun noisyChannelMelodic() {
+        assertRoundTrip(ModemProfile.Melodic, ChannelConditions(snrDb = 0.0))
+    }
+
+    @Test
+    fun roomEchoMelodic() {
+        assertRoundTrip(ModemProfile.Melodic, ChannelConditions(snrDb = 15.0, echoDelaySeconds = 0.012, echoGain = 0.6))
+    }
+
+    @Test
+    fun melodicAcrossSampleRatesWithDrift() {
+        assertRoundTrip(ModemProfile.Melodic, ChannelConditions(receiverSampleRate = 44_100, clockPpm = 200.0))
+    }
+
+    @Test
     fun noiseBurstIsRepaired() {
         val frame =
             assertRoundTrip(

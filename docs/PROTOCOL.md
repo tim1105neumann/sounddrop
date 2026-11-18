@@ -11,7 +11,7 @@ with `round(seconds × sampleRate)` (`FrameLayout`).
 ## 1. Frame structure
 
 ```
-| chirp 200 ms | gap 30 ms | header: 7 symbols (Robust) | payload: n symbols (Robust or Fast) | tail 30 ms |
+| chirp 200 ms | gap 30 ms | header: 7 symbols (Robust) | payload: n symbols (any profile) | tail 30 ms |
 ```
 
 | Part | Duration | Purpose |
@@ -67,10 +67,34 @@ of 16 tones in band B. Both tones play at the same time.
 |---|---|---|---|---|
 | Robust (id 0) | 21.33 ms | 42.67 ms | 64 ms | 125 bit/s |
 | Fast (id 1) | 10.67 ms | 21.33 ms | 32 ms | 250 bit/s |
+| Melodic (id 2) | 20 ms | 60 ms | 2 × 80 ms = 160 ms | 50 bit/s |
 
 The receiver ignores the **guard** at the start of every symbol, which absorbs reverberation of the
 previous symbol, and analyses only the **window**. The tone spacing of 93.75 Hz is exactly 4 / window
 (Robust) and 2 / window (Fast), so tones are orthogonal under the Hann window the receiver applies.
+
+### Melodic profile
+
+In Melodic mode a symbol is still one byte, but it is played as **two notes in a row** instead of a
+chord: the high nibble first, then the low nibble, each in its own 80 ms slot with its own guard and
+window. Both nibbles use the same 16 notes, three octaves of the C major pentatonic scale:
+
+| Tone k | 0 | 1 | 2 | 3 | 4 | 5 | … | 14 | 15 |
+|---|---|---|---|---|---|---|---|---|---|
+| Note | C5 | D5 | E5 | G5 | A5 | C6 | … | A7 | C8 |
+| Frequency | 523.3 Hz | 587.3 Hz | 659.3 Hz | 784.0 Hz | 880.0 Hz | 1046.5 Hz | … | 3520 Hz | 4186 Hz |
+
+`f(k) = 523.2511 · 2^(s/12)` with `s = 12 · (k div 5) + [0, 2, 4, 7, 9][k mod 5]` (equal temperament,
+A4 = 440 Hz). The scale has no semitone steps, so any sequence of notes sounds consonant. The closest
+notes (C5/D5) are 64 Hz apart, about four bins of the 60 ms window, so the tones are not orthogonal
+but leak less than −30 dB into each other.
+
+Every note is plucked: a 3 ms raised-cosine attack, an exponential decay with a 150 ms time constant
+and a 10 ms release, peak amplitude 0.9. Because each note starts and ends at zero, the phase does not
+need to be continuous. The Robust header before it is faded out at its end.
+
+Gray coding, demodulation, erasures and error correction are the same as for the chord profiles; in
+`SymbolReading`, band A means the first note and band B the second.
 
 ### Demodulation
 
@@ -170,7 +194,7 @@ The `modem` test suite (`./gradlew :modem:allTests`) runs on JVM, Android, Kotli
 
 * FFT against a naive DFT, Goertzel tone selectivity, the CRC-32 check value `0xCBF43926`;
 * Reed–Solomon with random errors, errors + erasures and over-capacity damage (200 random cases each);
-* end-to-end frames through `ChannelSimulator` at 0 dB SNR (Robust), 6 dB (Fast), with 60 % echo at
+* end-to-end frames through `ChannelSimulator` at 0 dB SNR (Robust and Melodic), 6 dB (Fast), with 60 % echo at
   12 ms, 44.1 ↔ 48 kHz conversion, ±300 ppm clock drift, a 400 ms noise burst, the maximum payload,
   arbitrary chunk sizes and back-to-back frames;
 * 10 s of noise without any false synchronisation.

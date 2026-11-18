@@ -26,10 +26,13 @@ public class FrameLayout(
         profile: ModemProfile,
     ): Int = samples(index * profile.symbolSeconds)
 
-    /** Samples skipped at the start of every symbol of [profile]. */
+    /** Samples skipped at the start of every tone slot of [profile]. */
     public fun guardSamples(profile: ModemProfile): Int = samples(profile.guardSeconds)
 
-    /** Samples analysed per symbol of [profile]. */
+    /** Start of the second tone slot of a symbol, relative to the symbol start. */
+    public fun slotSamples(profile: ModemProfile): Int = samples(profile.slotSeconds)
+
+    /** Samples analysed per tone slot of [profile]. */
     public fun windowSamples(profile: ModemProfile): Int = samples(profile.windowSeconds)
 
     /** Total frame length for a payload of [length] bytes, including the trailing tail. */
