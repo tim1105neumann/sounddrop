@@ -183,9 +183,34 @@
                     });
                 };
             });
+            // Count WebGL work per second and report shader failures, to see whether the app draws at all.
+            var glCalls = {};
+            if (window.WebGL2RenderingContext) {
+                var gl2 = WebGL2RenderingContext.prototype;
+                ["clear", "drawArrays", "drawElements", "bindFramebuffer", "viewport", "flush"].forEach(function (name) {
+                    var original = gl2[name];
+                    gl2[name] = function () {
+                        glCalls[name] = (glCalls[name] || 0) + 1;
+                        return original.apply(this, arguments);
+                    };
+                });
+                var getShaderParameter = gl2.getShaderParameter;
+                gl2.getShaderParameter = function (shader, name) {
+                    var value = getShaderParameter.apply(this, arguments);
+                    if (name === this.COMPILE_STATUS && !value) record("gl", ["shader failed: " + this.getShaderInfoLog(shader)]);
+                    return value;
+                };
+                var getProgramParameter = gl2.getProgramParameter;
+                gl2.getProgramParameter = function (program, name) {
+                    var value = getProgramParameter.apply(this, arguments);
+                    if (name === this.LINK_STATUS && !value) record("gl", ["link failed: " + this.getProgramInfoLog(program)]);
+                    return value;
+                };
+            }
             var ticks = 0;
             var heartbeat = setInterval(function () {
-                record("tick", [++ticks]);
+                record("tick", [++ticks + " gl " + JSON.stringify(glCalls)]);
+                glCalls = {};
                 if (ticks >= 12) clearInterval(heartbeat);
             }, 1000);
             setTimeout(function () {
