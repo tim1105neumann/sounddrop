@@ -206,7 +206,8 @@ Optional extras:
 
 ## Tested on
 
-* iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), over the air.
+* iPhone 17 Pro Max (iOS app) ↔ MacBook Pro (web app in Chrome), over the air: text in Robust mode,
+  Melodic mode in both directions, and sketches.
 * Android emulator (API 37), iOS simulator, desktop JVM and WebKit/Chromium for the UI.
 
 ## Tips for a good transmission
