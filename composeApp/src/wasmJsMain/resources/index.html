@@ -35,6 +35,15 @@
             line-height: 1.5;
         }
 
+        #status.failed {
+            position: fixed;
+            inset: 0;
+            overflow: auto;
+            max-width: none;
+            background: inherit;
+            z-index: 10;
+        }
+
         .browser-note code {
             display: block;
             margin-top: 12px;
@@ -58,7 +67,6 @@
     // Shows a readable message instead of a blank page when the app cannot start.
     (function () {
         var status = document.getElementById("status");
-        var started = false;
         var failedRequests = [];
 
         // Record failed downloads so the diagnostics can say which file could not be loaded and why.
@@ -87,7 +95,11 @@
         }
 
         function fail(reason) {
-            if (started) return;
+            if (status.classList.contains("failed")) return;
+            status.classList.add("failed");
+            status.style.display = "";
+            // Compose replaces the contents of <body>, so re-attach the message outside of it.
+            if (!status.isConnected) document.documentElement.appendChild(status);
             status.innerHTML =
                 "<strong>SoundDrop could not start in this browser.</strong><br>" +
                 "It needs a browser with WebAssembly garbage collection (Chrome 119+, Firefox 120+, " +
@@ -111,8 +123,8 @@
         });
         new MutationObserver(function (_, observer) {
             if (document.querySelector("canvas")) {
-                started = true;
-                status.remove();
+                // Keep the element: errors after start-up are still shown on top of the app.
+                if (!status.classList.contains("failed")) status.style.display = "none";
                 observer.disconnect();
             }
         }).observe(document.body, { childList: true, subtree: true });
