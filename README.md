@@ -178,7 +178,7 @@ Requirements: Android 8.0 (API 26) or newer, or an emulator.
 * **Build and install with Gradle:** set up the Android SDK (for example with Android Studio) and tell
   Gradle where it is: set `ANDROID_HOME` (on macOS usually `~/Library/Android/sdk`) or put
   `sdk.dir=/path/to/sdk` into `local.properties`. Opening the project once in Android Studio creates that
-  file for you. The desktop, web and iOS builds do not need the Android SDK. Connect a phone with USB
+  file for you. The desktop and web builds do not need the Android SDK. Connect a phone with USB
   debugging enabled or start an emulator, then run
 
   ```bash
