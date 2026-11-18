@@ -212,7 +212,8 @@ Optional extras:
 
 ## Tips for a good transmission
 
-<!-- TODO: replace with measured distances after real-device testing. -->
+* **Range** (iPhone ↔ MacBook, quiet room): *Robust* worked up to **4 m**, *Fast* up to **2 m**. In noisy
+  places, stay closer.
 * Turn the sender's volume up and use the built-in speaker.
 * If a message is "heard but too damaged", move closer or switch to *Robust*.
 
