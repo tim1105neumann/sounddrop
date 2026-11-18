@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.ktlint)
@@ -11,6 +12,12 @@ kotlin {
     jvmToolchain(21)
 
     jvm()
+    android {
+        namespace = "dev.sounddrop.app.shared"
+        compileSdk = 37
+        minSdk = 26
+        withHostTest {}
+    }
     wasmJs {
         browser {
             commonWebpackConfig {
@@ -43,6 +50,9 @@ kotlin {
         jvmMain.dependencies {
             implementation(compose.desktop.currentOs)
             implementation(libs.kotlinx.coroutines.swing)
+        }
+        androidMain.dependencies {
+            implementation(libs.androidx.activity.compose)
         }
         wasmJsMain.dependencies {
             implementation(libs.kotlinx.browser)

@@ -20,8 +20,10 @@ jobs:
         run: ./gradlew ktlintCheck
       - name: Tests on every target
         run: ./gradlew allTests
-      - name: Build desktop, web and iOS
-        run: ./gradlew :composeApp:jvmJar :composeApp:wasmJsBrowserDistribution :composeApp:linkDebugFrameworkIosSimulatorArm64
+      - name: Build Android, desktop, web and iOS
+        run: >-
+          ./gradlew :androidApp:assembleDebug :composeApp:jvmJar :composeApp:wasmJsBrowserDistribution
+          :composeApp:linkDebugFrameworkIosSimulatorArm64
       - name: Shared code report
         run: |
           ./gradlew sharedCodeReport

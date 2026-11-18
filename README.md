@@ -14,12 +14,12 @@ the microphone.
 · License: MIT
 
 <p>
-  <img src="docs/images/send-phone.png" width="240" alt="Send screen">
+  <img src="docs/images/android-send.png" width="240" alt="SoundDrop on Android">
   <img src="docs/images/listen-phone.png" width="240" alt="Listen screen with a received sketch and link">
   <img src="docs/images/ios-simulator.png" width="240" alt="SoundDrop running on the iOS simulator">
 </p>
 
-<!-- TODO before submission: add Android screenshots and the screencast link. -->
+<!-- TODO before submission: add the screencast link. -->
 
 ## Try it in 30 seconds
 
@@ -83,6 +83,8 @@ composeApp/
   jvmMain/        javax.sound audio engine + desktop entry point
   wasmJsMain/     Web Audio engine (AudioWorklet capture) + browser entry point
   iosMain/        AVAudioEngine audio engine + UIViewController entry point
+  androidMain/    AudioRecord / AudioTrack audio engine
+androidApp/       Android application: MainActivity and the microphone permission request
 iosApp/           Xcode project hosting the Compose UI
 ```
 
@@ -106,10 +108,12 @@ Generated with `./gradlew sharedCodeReport` (non-blank, non-comment lines):
 | composeApp/jvmMain | 85 |
 | composeApp/wasmJsMain (incl. worklet JS) | 214 |
 | composeApp/iosMain | 189 |
+| composeApp/androidMain | 107 |
+| androidApp (Activity) | 55 |
 | iosApp (Swift) | 24 |
 
-**85 % of the production code is shared** — every line of the modem and every screen. Tests
-(`commonTest`) run unchanged on the JVM, Kotlin/Wasm (Node.js and browser) and the iOS simulator.
+**81 % of the production code is shared** — every line of the modem and every screen. Tests
+(`commonTest`) run unchanged on the JVM, Android, Kotlin/Wasm (Node.js and browser) and the iOS simulator.
 
 ## Running it
 
@@ -157,13 +161,28 @@ Requirements: macOS with Xcode 16 or newer.
 
 ### Android
 
-<!-- TODO: Android target is being added. -->
-Coming soon.
+Requirements: Android 8.0 (API 26) or newer, or an emulator.
+
+* **Install a prebuilt APK:** download `SoundDrop.apk` from the
+  [latest release](https://github.com/tim1105neumann/sounddrop/releases/latest) and open it on the phone
+  (allow installing from this source when asked).
+* **Build and install with Gradle:** set up the Android SDK (for example with Android Studio), connect a
+  phone with USB debugging enabled or start an emulator, then run
+
+  ```bash
+  ./gradlew :androidApp:installDebug
+  ```
+
+* **Android Studio:** open the project folder and run the `androidApp` configuration.
+
+Allow microphone access when you press *Start listening*. In the emulator, enable
+*Extended controls → Microphone → Virtual microphone uses host audio input* to hear the computer's
+microphone.
 
 ### Tests and code style
 
 ```bash
-./gradlew allTests        # modem + app tests on JVM, Wasm (Node + browser) and iOS simulator
+./gradlew allTests        # modem + app tests on JVM, Android (host), Wasm (Node + browser) and iOS simulator
 ./gradlew ktlintCheck     # Kotlin coding conventions (ktlint_official)
 ```
 

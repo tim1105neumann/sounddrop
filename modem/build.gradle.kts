@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
+    alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.ktlint)
 }
 
@@ -8,6 +9,12 @@ kotlin {
     jvmToolchain(21)
 
     jvm()
+    android {
+        namespace = "dev.sounddrop.modem"
+        compileSdk = 37
+        minSdk = 26
+        withHostTest {}
+    }
     wasmJs {
         nodejs()
         browser()
