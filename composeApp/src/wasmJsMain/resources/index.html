@@ -59,6 +59,23 @@
     (function () {
         var status = document.getElementById("status");
         var started = false;
+        var failedRequests = [];
+
+        // Record failed downloads so the diagnostics can say which file could not be loaded and why.
+        var originalFetch = window.fetch;
+        window.fetch = function (input) {
+            var url = String((input && input.url) || input);
+            return originalFetch.apply(this, arguments).then(
+                function (response) {
+                    if (!response.ok) failedRequests.push("HTTP " + response.status + " " + url);
+                    return response;
+                },
+                function (error) {
+                    failedRequests.push(error + " " + url);
+                    throw error;
+                }
+            );
+        };
 
         // A module declaring one empty struct type validates only where WebAssembly GC is supported.
         function supportsWasmGc() {
@@ -73,12 +90,13 @@
             if (started) return;
             status.innerHTML =
                 "<strong>SoundDrop could not start in this browser.</strong><br>" +
-                "It needs WebAssembly with garbage collection: Chrome 119+, Firefox 120+ or Safari 18.2+. " +
-                "Safari's Lockdown Mode turns WebAssembly off. Diagnostics:<code></code>";
+                "It needs a browser with WebAssembly garbage collection (Chrome 119+, Firefox 120+, " +
+                "Safari 18.2+) that is allowed to download the app's .wasm files. Diagnostics:<code></code>";
             status.querySelector("code").textContent =
                 "Error: " + reason + "\n" +
                 "WebAssembly: " + (typeof WebAssembly === "object" ? "available" : "missing") + "\n" +
                 "WebAssembly GC: " + (typeof WebAssembly === "object" && supportsWasmGc() ? "supported" : "not supported") + "\n" +
+                "Failed requests: " + (failedRequests.length ? "\n  " + failedRequests.join("\n  ") : "none") + "\n" +
                 "Browser: " + navigator.userAgent;
         }
 
