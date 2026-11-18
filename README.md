@@ -105,16 +105,16 @@ Generated with `./gradlew sharedCodeReport` (non-blank, non-comment lines):
 
 | Source set | Lines of code |
 |---|---:|
-| modem/commonMain | 1295 |
-| composeApp/commonMain | 1621 |
-| composeApp/jvmMain | 85 |
-| composeApp/wasmJsMain (incl. worklet JS) | 214 |
-| composeApp/iosMain | 189 |
-| composeApp/androidMain | 107 |
+| modem/commonMain | 1386 |
+| composeApp/commonMain | 1709 |
+| composeApp/jvmMain | 105 |
+| composeApp/wasmJsMain (incl. worklet JS) | 224 |
+| composeApp/iosMain | 269 |
+| composeApp/androidMain | 124 |
 | androidApp (Activity) | 55 |
 | iosApp (Swift) | 24 |
 
-**81 % of the production code is shared** — every line of the modem and every screen. Tests
+**79 % of the production code is shared** (3095 of 3896 lines) — every line of the modem and every screen. Tests
 (`commonTest`) run unchanged on the JVM, Android, Kotlin/Wasm (Node.js and browser) and the iOS simulator.
 
 ## Running it
@@ -175,8 +175,11 @@ Requirements: Android 8.0 (API 26) or newer, or an emulator.
 * **Install a prebuilt APK:** download `SoundDrop.apk` from the
   [latest release](https://github.com/tim1105neumann/sounddrop/releases/latest) and open it on the phone
   (allow installing from this source when asked).
-* **Build and install with Gradle:** set up the Android SDK (for example with Android Studio), connect a
-  phone with USB debugging enabled or start an emulator, then run
+* **Build and install with Gradle:** set up the Android SDK (for example with Android Studio) and tell
+  Gradle where it is: set `ANDROID_HOME` (on macOS usually `~/Library/Android/sdk`) or put
+  `sdk.dir=/path/to/sdk` into `local.properties`. Opening the project once in Android Studio creates that
+  file for you. The desktop, web and iOS builds do not need the Android SDK. Connect a phone with USB
+  debugging enabled or start an emulator, then run
 
   ```bash
   ./gradlew :androidApp:installDebug
