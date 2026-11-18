@@ -4,6 +4,8 @@ import dev.sounddrop.app.audio.FakeAudioEngine
 import dev.sounddrop.modem.channel.ChannelConditions
 import dev.sounddrop.modem.channel.ChannelSimulator
 import dev.sounddrop.modem.payload.Payload
+import dev.sounddrop.modem.payload.encode
+import dev.sounddrop.modem.payload.type
 import dev.sounddrop.modem.protocol.ModemProfile
 import dev.sounddrop.modem.tx.Modulator
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +35,7 @@ class TransceiverViewModelTest {
     fun listeningDecodesALinkFromTheMicrophone() =
         runTest {
             val link = Payload.Link("https://kotlinlang.org")
-            val tx = Modulator(48_000).modulate(Payload.encode(link), Payload.typeOf(link), ModemProfile.Fast)
+            val tx = Modulator(48_000).modulate(link.encode(), link.type, ModemProfile.Fast)
             val recording =
                 ChannelSimulator(Random(3))
                     .transmit(tx.samples, 48_000, ChannelConditions(snrDb = 10.0, receiverSampleRate = 44_100))

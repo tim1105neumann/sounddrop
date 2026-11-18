@@ -2,6 +2,7 @@ package dev.sounddrop.app.audio
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -10,6 +11,7 @@ import kotlinx.coroutines.withContext
 import javax.sound.sampled.AudioFormat
 import javax.sound.sampled.AudioSystem
 import javax.sound.sampled.LineUnavailableException
+import javax.sound.sampled.SourceDataLine
 import javax.sound.sampled.TargetDataLine
 
 /** Desktop audio through `javax.sound.sampled`, using 16-bit PCM which every sound card supports. */
@@ -19,21 +21,38 @@ class JvmAudioEngine : AudioEngine {
         sampleRate: Int,
     ): Unit =
         withContext(Dispatchers.IO) {
-            val line = AudioSystem.getSourceDataLine(format(sampleRate))
-            line.open()
-            line.start()
+            val bytes = ByteArray(samples.size * 2)
+            for (i in samples.indices) {
+                val value = (samples[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt()
+                bytes[2 * i] = value.toByte()
+                bytes[2 * i + 1] = (value shr 8).toByte()
+            }
+            val line = openSpeaker(sampleRate)
             try {
-                val bytes = ByteArray(samples.size * 2)
-                for (i in samples.indices) {
-                    val value = (samples[i].coerceIn(-1f, 1f) * Short.MAX_VALUE).toInt()
-                    bytes[2 * i] = value.toByte()
-                    bytes[2 * i + 1] = (value shr 8).toByte()
+                line.start()
+                // Small blocks keep playback cancellable; one write would block for the whole transmission.
+                var offset = 0
+                while (offset < bytes.size) {
+                    ensureActive()
+                    offset += line.write(bytes, offset, minOf(WRITE_BLOCK_BYTES, bytes.size - offset))
                 }
-                line.write(bytes, 0, bytes.size)
                 line.drain()
             } finally {
+                if (!isActive) {
+                    line.stop()
+                    line.flush()
+                }
                 line.close()
             }
+        }
+
+    private fun openSpeaker(sampleRate: Int): SourceDataLine =
+        try {
+            AudioSystem.getSourceDataLine(format(sampleRate)).apply { open() }
+        } catch (e: LineUnavailableException) {
+            throw IllegalStateException("No audio output available", e)
+        } catch (e: IllegalArgumentException) {
+            throw IllegalStateException("No audio output available", e)
         }
 
     override fun capture(): Flow<AudioChunk> =
@@ -77,6 +96,7 @@ class JvmAudioEngine : AudioEngine {
 
     private companion object {
         const val CHUNK_SAMPLES = 2048
+        const val WRITE_BLOCK_BYTES = 4096
         val PREFERRED_RATES = listOf(48_000, 44_100)
     }
 }

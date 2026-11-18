@@ -23,11 +23,11 @@ public class Spectrogram(
     /** Number of values in each column; index 0 is [minHz]. */
     public val binCount: Int = lastBin - firstBin + 1
 
-    /** Centre frequency of value [index] in a column. */
-    public fun frequencyOf(index: Int): Double = (firstBin + index).toDouble() * sampleRate / FFT_SIZE
-
     /** Duration of audio represented by one column. */
     public val secondsPerColumn: Double get() = FFT_SIZE.toDouble() / sampleRate
+
+    /** Centre frequency of value [index] in a column. */
+    public fun frequencyOf(index: Int): Double = (firstBin + index).toDouble() * sampleRate / FFT_SIZE
 
     /** Adds [samples] and returns the columns that became complete. */
     public fun feed(samples: FloatArray): List<FloatArray> {

@@ -6,7 +6,9 @@ import kotlin.math.roundToInt
 
 /** A point of a sketch on the [SketchCodec.GRID] × [SketchCodec.GRID] grid. */
 public data class SketchPoint(
+    /** Column, `0` is the left edge. */
     val x: Int,
+    /** Row, `0` is the top edge. */
     val y: Int,
 )
 
@@ -22,6 +24,7 @@ public object SketchCodec {
 
     private const val MAX_STEP = 7
     private const val MAX_POINTS_PER_STROKE = 255
+    private const val MAX_TOLERANCE = 0.08
 
     /** Serialises [strokes]; every point must lie on the grid. */
     public fun encode(strokes: List<List<SketchPoint>>): ByteArray {
@@ -80,8 +83,6 @@ public object SketchCodec {
             tolerance *= 1.5
         }
     }
-
-    private const val MAX_TOLERANCE = 0.08
 
     private fun dropUntilFits(
         strokes: List<List<SketchPoint>>,

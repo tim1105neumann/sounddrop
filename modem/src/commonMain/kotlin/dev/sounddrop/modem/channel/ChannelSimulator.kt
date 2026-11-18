@@ -44,7 +44,9 @@ public class ChannelSimulator(
 ) {
     /** The received audio and the sample rate it was "recorded" at. */
     public class Output(
+        /** The received audio. */
         public val samples: FloatArray,
+        /** Sample rate of [samples]. */
         public val sampleRate: Int,
     )
 

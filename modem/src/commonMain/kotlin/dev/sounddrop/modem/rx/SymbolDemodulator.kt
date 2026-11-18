@@ -46,15 +46,13 @@ public class SymbolDemodulator(
         profile: ModemProfile,
     ): SymbolReading {
         val from = symbolStart + layout.guardSamples(profile)
-        val length = layout.windowSamples(profile)
-        val window = windows.getValue(profile)
         val powersA =
             FloatArray(TonePlan.TONES_PER_BAND) { tone ->
-                Goertzel.power(samples, from, length, TonePlan.bandA(tone), sampleRate, window).toFloat()
+                bandPower(samples, from, TonePlan.bandA(tone), profile)
             }
         val powersB =
             FloatArray(TonePlan.TONES_PER_BAND) { tone ->
-                Goertzel.power(samples, from, length, TonePlan.bandB(tone), sampleRate, window).toFloat()
+                bandPower(samples, from, TonePlan.bandB(tone), profile)
             }
         val (toneA, ratioA) = strongest(powersA)
         val (toneB, ratioB) = strongest(powersB)
@@ -69,6 +67,22 @@ public class SymbolDemodulator(
             powersB = normalised(powersB),
         )
     }
+
+    private fun bandPower(
+        samples: FloatArray,
+        from: Int,
+        frequency: Double,
+        profile: ModemProfile,
+    ): Float =
+        Goertzel
+            .power(
+                samples = samples,
+                from = from,
+                length = layout.windowSamples(profile),
+                frequency = frequency,
+                sampleRate = sampleRate,
+                window = windows.getValue(profile),
+            ).toFloat()
 
     private fun strongest(powers: FloatArray): Pair<Int, Float> {
         var best = 0

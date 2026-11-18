@@ -57,6 +57,7 @@ fun App(engine: AudioEngine) {
                         Screen.Listen ->
                             ListenScreen(
                                 state,
+                                viewModel.inputLevel,
                                 viewModel.spectrum,
                                 viewModel::toggleListening,
                                 viewModel::clearInbox,
@@ -95,7 +96,7 @@ fun App(engine: AudioEngine) {
                             }
                         },
                     ) { padding ->
-                        content(Modifier.fillMaxSize().then(Modifier.padding(padding)))
+                        content(Modifier.fillMaxSize().padding(padding))
                     }
                 }
             }

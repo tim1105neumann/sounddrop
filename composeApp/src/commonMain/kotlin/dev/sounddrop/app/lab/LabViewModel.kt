@@ -2,10 +2,13 @@ package dev.sounddrop.app.lab
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.sounddrop.app.payloadSizeError
 import dev.sounddrop.modem.channel.ChannelConditions
 import dev.sounddrop.modem.channel.ChannelSimulator
 import dev.sounddrop.modem.dsp.Spectrogram
 import dev.sounddrop.modem.payload.Payload
+import dev.sounddrop.modem.payload.encode
+import dev.sounddrop.modem.payload.type
 import dev.sounddrop.modem.protocol.FrameHeader
 import dev.sounddrop.modem.protocol.ModemProfile
 import dev.sounddrop.modem.rx.DecoderEvent
@@ -14,7 +17,9 @@ import dev.sounddrop.modem.rx.SymbolReading
 import dev.sounddrop.modem.tx.Modulator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -37,16 +42,15 @@ data class LabSettings(
 /** Role of a byte inside a frame, used to colour it. */
 enum class ByteRole { Header, Data, Checksum, Parity }
 
-/**
- * One symbol of the experiment: what was sent and what the receiver made of it.
- *
- * @property reading `null` if the receiver never got that far (for example no sync).
- * @property corrected Reed–Solomon had to repair this byte.
- */
+/** One symbol of the experiment: what was sent and what the receiver made of it. */
 class LabSymbol(
+    /** The byte that went on air. */
     val sent: Int,
+    /** Which part of the frame the byte belongs to. */
     val role: ByteRole,
+    /** What the receiver heard, or `null` if it never got that far (for example no sync). */
     val reading: SymbolReading?,
+    /** Whether Reed–Solomon had to repair this byte. */
     val corrected: Boolean,
 ) {
     /** The receiver heard a different byte than the one that was sent. */
@@ -95,33 +99,36 @@ data class LabState(
  * explore the protocol on a single device, without speakers or a microphone.
  */
 class LabViewModel : ViewModel() {
-    private val mutableState = MutableStateFlow(LabState())
-    val state: StateFlow<LabState> = mutableState.asStateFlow()
+    private val _state = MutableStateFlow(LabState())
+
+    /** Screen state. */
+    val state: StateFlow<LabState> = _state.asStateFlow()
+
     private var job: Job? = null
 
     /** Changes the experiment settings. */
-    fun update(transform: (LabSettings) -> LabSettings) {
-        mutableState.update { it.copy(settings = transform(it.settings)) }
+    fun updateSettings(transform: (LabSettings) -> LabSettings) {
+        _state.update { it.copy(settings = transform(it.settings)) }
     }
 
     /** Sends the message once through the simulated room. */
     fun run() {
         launchExclusive {
-            mutableState.update { it.copy(result = simulate(state.value.settings), breakingPointDb = null) }
+            _state.update { it.copy(result = simulate(state.value.settings), breakingPointDb = null) }
         }
     }
 
     /** Lowers the signal-to-noise ratio step by step until decoding fails. */
     fun breakIt() {
         launchExclusive {
-            mutableState.update { it.copy(breakingPointDb = null) }
+            _state.update { it.copy(breakingPointDb = null) }
             var snr = BREAK_START_DB
             while (snr >= BREAK_END_DB) {
-                update { it.copy(snrDb = snr) }
+                updateSettings { it.copy(snrDb = snr) }
                 val result = simulate(state.value.settings)
-                mutableState.update { it.copy(result = result) }
+                _state.update { it.copy(result = result) }
                 if (result.outcome !is LabOutcome.Decoded) {
-                    mutableState.update { it.copy(breakingPointDb = snr) }
+                    _state.update { it.copy(breakingPointDb = snr) }
                     break
                 }
                 delay(BREAK_STEP_MILLIS)
@@ -131,25 +138,20 @@ class LabViewModel : ViewModel() {
     }
 
     private fun launchExclusive(block: suspend () -> Unit) {
-        val bytes =
-            state.value.settings.text
-                .encodeToByteArray()
-        if (bytes.size > FrameHeader.MAX_PAYLOAD) {
-            mutableState.update {
-                it.copy(
-                    error = "Message is ${bytes.size} bytes, the limit is ${FrameHeader.MAX_PAYLOAD}",
-                )
-            }
+        payloadSizeError(Payload.Text(state.value.settings.text).encode().size)?.let { error ->
+            _state.update { it.copy(error = error) }
             return
         }
-        job?.cancel()
+        val previous = job
         job =
             viewModelScope.launch {
-                mutableState.update { it.copy(running = true, error = null) }
+                // Wait for the previous run, so its cleanup cannot reset `running` for this one.
+                previous?.cancelAndJoin()
+                _state.update { it.copy(running = true, error = null) }
                 try {
                     block()
                 } finally {
-                    mutableState.update { it.copy(running = false) }
+                    _state.update { it.copy(running = false) }
                 }
             }
     }
@@ -158,7 +160,7 @@ class LabViewModel : ViewModel() {
         withContext(Dispatchers.Default) {
             val payload = Payload.Text(settings.text)
             val tx =
-                Modulator(SENDER_RATE).modulate(Payload.encode(payload), Payload.typeOf(payload), settings.profile)
+                Modulator(SENDER_RATE).modulate(payload.encode(), payload.type, settings.profile)
             val conditions =
                 ChannelConditions(
                     snrDb = settings.snrDb.toDouble(),
@@ -171,6 +173,7 @@ class LabViewModel : ViewModel() {
                     burstLevel = 6.0,
                 )
             val rx = ChannelSimulator().transmit(tx.samples, SENDER_RATE, conditions)
+            ensureActive()
             val decoder = StreamingDecoder(rx.sampleRate)
             val events = decoder.feed(rx.samples) + decoder.feed(FloatArray(rx.sampleRate))
             analyse(tx, events, Spectrogram.of(rx.samples, rx.sampleRate), settings)

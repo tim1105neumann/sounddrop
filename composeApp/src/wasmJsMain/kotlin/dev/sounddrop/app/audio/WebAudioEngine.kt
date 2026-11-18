@@ -1,6 +1,5 @@
 package dev.sounddrop.app.audio
 
-import kotlinx.browser.document
 import kotlinx.coroutines.await
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -30,9 +29,7 @@ class WebAudioEngine : AudioEngine {
     init {
         // Unlock audio inside a real gesture handler; coroutines started from a click may run too
         // late for strict autoplay policies (Safari).
-        val unlock: (Event) -> Unit = { context().resume() }
-        document.addEventListener("pointerdown", unlock)
-        document.addEventListener("keydown", unlock)
+        unlockOnGesture { context() }
     }
 
     override suspend fun play(
@@ -139,6 +136,24 @@ private fun requestMicrophone(): Promise<MediaStream> =
         """navigator.mediaDevices.getUserMedia({
             audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }
         })""",
+    )
+
+/**
+ * Resumes the context returned by [context] on every pointer or key press until it is running, then
+ * removes the listeners. A rejected resume is ignored; the next gesture tries again.
+ */
+private fun unlockOnGesture(context: () -> AudioContext): Unit =
+    js(
+        """{
+            const events = ["pointerdown", "keydown"];
+            const remove = () => events.forEach((type) => document.removeEventListener(type, unlock));
+            const unlock = () => {
+                const audio = context();
+                if (audio.state === "running") return remove();
+                audio.resume().then(() => { if (audio.state === "running") remove(); }, () => {});
+            };
+            events.forEach((type) => document.addEventListener(type, unlock));
+        }""",
     )
 
 // Minimal Web Audio externals; kotlinx-browser does not cover this API.

@@ -66,7 +66,7 @@ fun LabScreen(
                 "Turn up the noise and echo to see the error correction at work.",
             style = MaterialTheme.typography.bodyMedium,
         )
-        LabControls(state, viewModel::update, onRun = viewModel::run, onBreak = viewModel::breakIt)
+        LabControls(state, viewModel::updateSettings, onRun = viewModel::run, onBreak = viewModel::breakIt)
         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         state.result?.let { LabResultView(it, state.breakingPointDb) }
     }

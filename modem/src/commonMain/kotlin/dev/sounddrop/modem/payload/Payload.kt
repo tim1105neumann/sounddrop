@@ -7,11 +7,13 @@ package dev.sounddrop.modem.payload
 public sealed interface Payload {
     /** Plain text. */
     public data class Text(
+        /** The message. */
         val text: String,
     ) : Payload
 
     /** A web link the receiver can open. */
     public data class Link(
+        /** The address, normally `https://…`. */
         val url: String,
     ) : Payload
 
@@ -20,8 +22,11 @@ public sealed interface Payload {
      * codes use.
      */
     public data class Wifi(
+        /** Network name. */
         val ssid: String,
+        /** Network password; empty for open networks. */
         val password: String,
+        /** Authentication type. */
         val security: Security = Security.WPA,
     ) : Payload {
         /** Network authentication type. */
@@ -30,27 +35,15 @@ public sealed interface Payload {
 
     /** A small line drawing on a [SketchCodec.GRID] × [SketchCodec.GRID] grid. */
     public data class Sketch(
+        /** Strokes in drawing order, each a list of grid points. */
         val strokes: List<List<SketchPoint>>,
     ) : Payload
 
     public companion object {
-        /** On-air type of [payload]. */
-        public fun typeOf(payload: Payload): Int =
-            when (payload) {
-                is Text -> TYPE_TEXT
-                is Link -> TYPE_LINK
-                is Wifi -> TYPE_WIFI
-                is Sketch -> TYPE_SKETCH
-            }
-
-        /** Serialises [payload]; the result may exceed the frame limit, callers must check. */
-        public fun encode(payload: Payload): ByteArray =
-            when (payload) {
-                is Text -> payload.text.encodeToByteArray()
-                is Link -> payload.url.encodeToByteArray()
-                is Wifi -> WifiFormat.format(payload).encodeToByteArray()
-                is Sketch -> SketchCodec.encode(payload.strokes)
-            }
+        internal const val TYPE_TEXT = 0
+        internal const val TYPE_LINK = 1
+        internal const val TYPE_WIFI = 2
+        internal const val TYPE_SKETCH = 3
 
         /** Parses a received payload, or returns `null` for unknown types or malformed data. */
         public fun decode(
@@ -64,13 +57,27 @@ public sealed interface Payload {
                 TYPE_SKETCH -> SketchCodec.decode(bytes)?.let(::Sketch)
                 else -> null
             }
-
-        private const val TYPE_TEXT = 0
-        private const val TYPE_LINK = 1
-        private const val TYPE_WIFI = 2
-        private const val TYPE_SKETCH = 3
     }
 }
+
+/** On-air type byte of this payload, stored in the frame header. */
+public val Payload.type: Int
+    get() =
+        when (this) {
+            is Payload.Text -> Payload.TYPE_TEXT
+            is Payload.Link -> Payload.TYPE_LINK
+            is Payload.Wifi -> Payload.TYPE_WIFI
+            is Payload.Sketch -> Payload.TYPE_SKETCH
+        }
+
+/** Serialises this payload. The result may exceed the frame limit; callers must check. */
+public fun Payload.encode(): ByteArray =
+    when (this) {
+        is Payload.Text -> text.encodeToByteArray()
+        is Payload.Link -> url.encodeToByteArray()
+        is Payload.Wifi -> WifiFormat.format(this).encodeToByteArray()
+        is Payload.Sketch -> SketchCodec.encode(strokes)
+    }
 
 /** The de-facto standard Wi-Fi string used by QR codes, including its backslash escaping. */
 internal object WifiFormat {

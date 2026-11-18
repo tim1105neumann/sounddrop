@@ -15,7 +15,7 @@ class PayloadTest {
                 Payload.Wifi("OpenNet", "", Payload.Wifi.Security.NONE),
             )
         for (payload in payloads) {
-            val decoded = Payload.decode(Payload.typeOf(payload), Payload.encode(payload))
+            val decoded = Payload.decode(payload.type, payload.encode())
             assertEquals(payload, decoded)
         }
     }
@@ -24,7 +24,7 @@ class PayloadTest {
     fun wifiUsesTheQrCodeFormat() {
         assertEquals(
             "WIFI:T:WPA;S:Home;P:secret;;",
-            Payload.encode(Payload.Wifi("Home", "secret")).decodeToString(),
+            Payload.Wifi("Home", "secret").encode().decodeToString(),
         )
     }
 

@@ -17,7 +17,7 @@ import dev.sounddrop.modem.protocol.ModemProfile
 import dev.sounddrop.modem.protocol.TonePlan
 import kotlin.math.roundToInt
 
-private val steps =
+private val STEPS =
     listOf(
         "Chirp" to
             "Every transmission starts with a 0.2 s sweep from 1.5 to 5 kHz. The receiver finds it with an FFT " +
@@ -49,7 +49,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                 "microphone are platform-specific.",
             style = MaterialTheme.typography.bodyMedium,
         )
-        steps.forEach { (title, body) ->
+        STEPS.forEach { (title, body) ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium)

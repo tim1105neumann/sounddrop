@@ -10,6 +10,7 @@ import kotlin.math.sin
  * Twiddle factors are precomputed once, so a single instance can be reused for many transforms.
  */
 public class Fft(
+    /** Number of points of the transform. */
     public val size: Int,
 ) {
     init {

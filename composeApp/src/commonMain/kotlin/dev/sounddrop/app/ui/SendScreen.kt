@@ -37,6 +37,7 @@ import dev.sounddrop.app.Outgoing
 import dev.sounddrop.app.TransceiverState
 import dev.sounddrop.modem.payload.Payload
 import dev.sounddrop.modem.payload.SketchCodec
+import dev.sounddrop.modem.payload.encode
 import dev.sounddrop.modem.protocol.FrameHeader
 import dev.sounddrop.modem.protocol.FrameLayout
 import dev.sounddrop.modem.protocol.ModemProfile
@@ -78,7 +79,7 @@ fun SendScreen(
             PayloadKind.Wifi -> Payload.Wifi(ssid, password)
             PayloadKind.Sketch -> Payload.Sketch(sketch)
         }
-    val size = Payload.encode(payload).size
+    val size = payload.encode().size
     val fits = size <= FrameHeader.MAX_PAYLOAD
 
     Column(

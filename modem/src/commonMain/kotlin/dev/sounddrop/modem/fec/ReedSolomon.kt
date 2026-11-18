@@ -44,16 +44,14 @@ public class ReedSolomon(
     }
 
     /**
-     * Decodes [codeword] without modifying it.
-     *
-     * @param erasures byte indices that are known (or suspected) to be wrong.
-     * @return the corrected codeword with the positions that were changed, or `null` when the
-     * damage exceeds the correction capacity.
+     * Decodes [codeword] without modifying it, treating the byte indices in [erasures] as known (or
+     * suspected) to be wrong. Returns the corrected codeword and the positions that were changed, or
+     * `null` when the damage exceeds the correction capacity.
      */
     public fun decode(
         codeword: ByteArray,
         erasures: Collection<Int> = emptyList(),
-    ): Result? {
+    ): Decoded? {
         val n = codeword.size
         require(n in paritySize + 1..GaloisField.ORDER) { "Invalid codeword length $n" }
         val erased = erasures.filter { it in 0 until n }.distinct()
@@ -61,7 +59,7 @@ public class ReedSolomon(
 
         val received = IntArray(n) { codeword[it].toInt() and 0xFF }
         val syndromes = syndromes(received)
-        if (syndromes.all { it == 0 }) return Result(codeword.copyOf(), emptyList())
+        if (syndromes.all { it == 0 }) return Decoded(codeword.copyOf(), emptyList())
 
         val erasureLocator =
             erased.fold(intArrayOf(1)) { acc, k ->
@@ -80,7 +78,7 @@ public class ReedSolomon(
             received[k] = received[k] xor magnitude
         }
         if (syndromes(received).any { it != 0 }) return null
-        return Result(ByteArray(n) { received[it].toByte() }, positions.sorted())
+        return Decoded(ByteArray(n) { received[it].toByte() }, positions)
     }
 
     private fun syndromes(received: IntArray): IntArray =
@@ -157,8 +155,10 @@ public class ReedSolomon(
     }
 
     /** A successfully decoded codeword and the byte indices that had to be corrected. */
-    public class Result(
+    public class Decoded(
+        /** The corrected codeword (data followed by parity). */
         public val codeword: ByteArray,
+        /** Byte indices that were changed, in ascending order. */
         public val correctedPositions: List<Int>,
     )
 }

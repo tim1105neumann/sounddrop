@@ -34,6 +34,9 @@ public data class FrameHeader(
         /** Reed–Solomon parity bytes protecting the header. */
         public const val PARITY_SIZE: Int = 4
 
+        /** Bytes of CRC-32 appended to the payload before error correction. */
+        public const val CRC_SIZE: Int = 4
+
         /** Header length on air, in symbols (= bytes). */
         public const val SIZE: Int = 3 + PARITY_SIZE
 
@@ -62,8 +65,5 @@ public data class FrameHeader(
          * by roughly 50 % redundancy, so up to a quarter of the symbols may be lost.
          */
         public fun payloadParity(length: Int): Int = maxOf(8, 2 * ((length + CRC_SIZE + 3) / 4))
-
-        /** Bytes of CRC-32 appended to the payload before error correction. */
-        public const val CRC_SIZE: Int = 4
     }
 }

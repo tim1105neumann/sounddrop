@@ -18,6 +18,7 @@ import dev.sounddrop.modem.rx.DecoderEvent.Section
  * Not thread-safe: call it from one thread or coroutine at a time.
  */
 public class StreamingDecoder(
+    /** Sample rate of the audio passed to [feed]. */
     public val sampleRate: Int,
 ) {
     private val layout = FrameLayout(sampleRate)
@@ -91,7 +92,13 @@ public class StreamingDecoder(
         val profile = FrameLayout.HEADER_PROFILE
         val reading = readSymbol(s.frameStart + layout.headerStart, s.readings.size, profile) ?: return false
         s.readings += reading
-        events += DecoderEvent.SymbolDecoded(Section.Header, s.readings.lastIndex, FrameHeader.SIZE, reading)
+        events +=
+            DecoderEvent.SymbolDecoded(
+                section = Section.Header,
+                index = s.readings.lastIndex,
+                count = FrameHeader.SIZE,
+                reading = reading,
+            )
         if (s.readings.size < FrameHeader.SIZE) return true
 
         val header =
@@ -116,7 +123,13 @@ public class StreamingDecoder(
         val count = FrameLayout.payloadSymbols(s.header.length)
         val reading = readSymbol(s.frameStart + layout.payloadStart, s.readings.size, profile) ?: return false
         s.readings += reading
-        events += DecoderEvent.SymbolDecoded(Section.Payload, s.readings.lastIndex, count, reading)
+        events +=
+            DecoderEvent.SymbolDecoded(
+                section = Section.Payload,
+                index = s.readings.lastIndex,
+                count = count,
+                reading = reading,
+            )
         if (s.readings.size < count) return true
 
         events += finishFrame(s.header, s.readings)

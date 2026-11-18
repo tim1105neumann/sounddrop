@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 
 /** Colour map from silence (dark) through violet and magenta to loud (yellow). */
-private val colorStops =
+private val COLOR_STOPS =
     listOf(
         Color(0xFF0B0914),
         Color(0xFF2A1659),
@@ -31,9 +31,9 @@ private val colorStops =
 
 /** Maps a loudness value in `0..1` to a colour. */
 fun heatColor(value: Float): Color {
-    val scaled = value.coerceIn(0f, 1f) * (colorStops.size - 1)
-    val index = scaled.toInt().coerceAtMost(colorStops.size - 2)
-    return lerp(colorStops[index], colorStops[index + 1], scaled - index)
+    val scaled = value.coerceIn(0f, 1f) * (COLOR_STOPS.size - 1)
+    val index = scaled.toInt().coerceAtMost(COLOR_STOPS.size - 2)
+    return lerp(COLOR_STOPS[index], COLOR_STOPS[index + 1], scaled - index)
 }
 
 /**
@@ -105,7 +105,7 @@ fun Waterfall(
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier) {
-        drawRect(colorStops.first(), Offset.Zero, size)
+        drawRect(COLOR_STOPS.first(), Offset.Zero, size)
         // Reading the version subscribes this draw block to new columns.
         if (state.version >= 0) state.draw(this)
     }

@@ -62,7 +62,7 @@ class SketchCodecTest {
     @Test
     fun sketchPayloadRoundTrips() {
         val payload = Payload.Sketch(SketchCodec.decode(SketchCodec.encode(square))!!)
-        assertEquals(payload, Payload.decode(Payload.typeOf(payload), Payload.encode(payload)))
+        assertEquals(payload, Payload.decode(payload.type, payload.encode()))
     }
 
     @Test

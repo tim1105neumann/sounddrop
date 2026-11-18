@@ -21,6 +21,7 @@ import dev.sounddrop.app.lab.LabViewModel
 import dev.sounddrop.modem.payload.Payload
 import dev.sounddrop.modem.payload.SketchCodec
 import dev.sounddrop.modem.protocol.ModemProfile
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
@@ -61,7 +62,8 @@ class ScreenshotTest {
             SoundDropTheme {
                 Surface {
                     ListenScreen(
-                        TransceiverState(listening = true, reception = Reception.Searching, inbox = inbox),
+                        TransceiverState(reception = Reception.Searching, inbox = inbox),
+                        MutableStateFlow(0.05f),
                         flowOf(),
                         onToggleListening = {},
                         onClearInbox = {},
@@ -70,7 +72,7 @@ class ScreenshotTest {
             }
         }
         val lab = LabViewModel()
-        lab.update { it.copy(snrDb = 2f, echoGain = 0.5f) }
+        lab.updateSettings { it.copy(snrDb = 2f, echoGain = 0.5f) }
         lab.run()
         runBlocking { withTimeout(30_000) { lab.state.first { it.result != null } } }
         render(dir, "lab-wide", 1100, 1500) { SoundDropTheme { Surface { LabScreen(viewModel = lab) } } }

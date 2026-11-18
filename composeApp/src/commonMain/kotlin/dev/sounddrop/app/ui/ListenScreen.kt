@@ -18,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,16 +27,19 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.sounddrop.app.ReceivedMessage
 import dev.sounddrop.app.Reception
 import dev.sounddrop.app.TransceiverState
 import dev.sounddrop.modem.payload.Payload
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /** Live microphone spectrogram and the inbox of received messages. */
 @Composable
 fun ListenScreen(
     state: TransceiverState,
+    inputLevel: StateFlow<Float>,
     spectrum: Flow<FloatArray>,
     onToggleListening: () -> Unit,
     onClearInbox: () -> Unit,
@@ -69,10 +73,7 @@ fun ListenScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text("Input level", style = MaterialTheme.typography.labelMedium)
-                    LinearProgressIndicator(
-                        progress = { (state.inputLevel * 5).coerceIn(0f, 1f) },
-                        modifier = Modifier.weight(1f),
-                    )
+                    InputLevelMeter(inputLevel, Modifier.weight(1f))
                 }
                 (state.reception as? Reception.Receiving)?.let { receiving ->
                     LinearProgressIndicator(
@@ -103,6 +104,16 @@ fun ListenScreen(
     }
 }
 
+/** Collects the level here, so only the meter recomposes for every audio chunk. */
+@Composable
+private fun InputLevelMeter(
+    inputLevel: StateFlow<Float>,
+    modifier: Modifier = Modifier,
+) {
+    val level by inputLevel.collectAsStateWithLifecycle()
+    LinearProgressIndicator(progress = { (level * 5).coerceIn(0f, 1f) }, modifier = modifier)
+}
+
 private fun statusText(state: TransceiverState): String =
     when (val reception = state.reception) {
         Reception.Idle -> "Microphone off"
@@ -113,6 +124,10 @@ private fun statusText(state: TransceiverState): String =
 @Composable
 private fun InboxItem(message: ReceivedMessage) {
     val uriHandler = LocalUriHandler.current
+
+    // Compose Multiplatform has no common way to build a ClipEntry yet, so the plain-text
+    // clipboard manager is still the portable choice.
+    @Suppress("DEPRECATION")
     val clipboard = LocalClipboardManager.current
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -133,7 +148,11 @@ private fun InboxItem(message: ReceivedMessage) {
                         color = MaterialTheme.colorScheme.primary,
                     )
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { runCatching { uriHandler.openUri(payload.url) } }) { Text("Open") }
+                        // Anyone in earshot can send a link, so only ever open web addresses.
+                        Button(
+                            onClick = { runCatching { uriHandler.openUri(payload.url) } },
+                            enabled = payload.url.isWebAddress(),
+                        ) { Text("Open") }
                         OutlinedButton(onClick = { clipboard.setText(AnnotatedString(payload.url)) }) { Text("Copy") }
                     }
                 }
@@ -160,3 +179,6 @@ private fun InboxItem(message: ReceivedMessage) {
         }
     }
 }
+
+private fun String.isWebAddress(): Boolean =
+    startsWith("https://", ignoreCase = true) || startsWith("http://", ignoreCase = true)

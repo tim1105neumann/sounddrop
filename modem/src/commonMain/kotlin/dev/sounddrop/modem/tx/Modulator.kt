@@ -20,22 +20,20 @@ import kotlin.math.sin
  * across symbol boundaries, so changing frequency never produces an audible click.
  */
 public class Modulator(
+    /** Sample rate of the generated audio. */
     public val sampleRate: Int,
 ) {
     private val layout = FrameLayout(sampleRate)
 
-    /**
-     * Everything that goes on air for one frame, so it can be both played and visualised.
-     *
-     * @property header the decoded form of the header.
-     * @property headerSymbols header bytes including Reed–Solomon parity.
-     * @property payloadSymbols payload + CRC-32 + Reed–Solomon parity.
-     * @property samples the audio, in `-1..1`.
-     */
+    /** Everything that goes on air for one frame, so it can be both played and visualised. */
     public class Transmission(
+        /** The decoded form of the header. */
         public val header: FrameHeader,
+        /** Header bytes including Reed–Solomon parity. */
         public val headerSymbols: ByteArray,
+        /** Payload, CRC-32 and Reed–Solomon parity. */
         public val payloadSymbols: ByteArray,
+        /** The audio, in `-1..1`. */
         public val samples: FloatArray,
     )
 

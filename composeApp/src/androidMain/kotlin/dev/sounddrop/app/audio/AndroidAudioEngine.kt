@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Android audio through [AudioTrack] and [AudioRecord] in 32-bit float.
@@ -56,15 +57,22 @@ class AndroidAudioEngine(
                     .setBufferSizeInBytes(samples.size * Float.SIZE_BYTES)
                     .build()
             try {
-                track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                val written = track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                check(written == samples.size && track.state == AudioTrack.STATE_INITIALIZED) {
+                    "The speaker could not be opened (write returned $written)"
+                }
                 track.play()
                 // A static track plays the whole buffer; wait until the playhead reaches its end.
-                while (currentCoroutineContext().isActive && track.playbackHeadPosition < samples.size) {
-                    delay(POLL_MILLIS)
-                }
+                val timeoutMillis = samples.size * 1000L / sampleRate + PLAYBACK_GRACE_MILLIS
+                withTimeoutOrNull(timeoutMillis) {
+                    while (track.playbackHeadPosition < samples.size) delay(POLL_MILLIS)
+                } ?: error("Playback stalled: the speaker stopped before the transmission finished")
             } finally {
-                track.stop()
-                track.release()
+                try {
+                    if (track.state == AudioTrack.STATE_INITIALIZED) track.stop()
+                } finally {
+                    track.release()
+                }
             }
         }
 
@@ -91,8 +99,13 @@ class AndroidAudioEngine(
                 record.release()
                 throw MicrophoneUnavailableException("The microphone could not be opened")
             }
-            record.startRecording()
             try {
+                record.startRecording()
+                if (record.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                    throw MicrophoneUnavailableException(
+                        "Recording could not start; the microphone is probably used by another app",
+                    )
+                }
                 val buffer = FloatArray(CHUNK_SAMPLES)
                 while (currentCoroutineContext().isActive) {
                     val read = record.read(buffer, 0, buffer.size, AudioRecord.READ_BLOCKING)
@@ -100,8 +113,11 @@ class AndroidAudioEngine(
                     emit(AudioChunk(buffer.copyOf(read), record.sampleRate))
                 }
             } finally {
-                record.stop()
-                record.release()
+                try {
+                    record.stop()
+                } finally {
+                    record.release()
+                }
             }
         }.flowOn(Dispatchers.IO)
 
@@ -118,5 +134,6 @@ class AndroidAudioEngine(
         const val SAMPLE_RATE = 48_000
         const val CHUNK_SAMPLES = 2048
         const val POLL_MILLIS = 20L
+        const val PLAYBACK_GRACE_MILLIS = 1000L
     }
 }
