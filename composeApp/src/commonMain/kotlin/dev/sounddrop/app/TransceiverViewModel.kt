@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.sounddrop.app.audio.AudioEngine
 import dev.sounddrop.app.audio.MicrophoneUnavailableException
+import dev.sounddrop.modem.dsp.Spectrogram
 import dev.sounddrop.modem.payload.Payload
 import dev.sounddrop.modem.protocol.FrameHeader
 import dev.sounddrop.modem.protocol.ModemProfile
@@ -12,13 +13,18 @@ import dev.sounddrop.modem.rx.StreamingDecoder
 import dev.sounddrop.modem.tx.Modulator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
 
 /** Everything the send and listen screens show. */
@@ -28,7 +34,20 @@ data class TransceiverState(
     val inputLevel: Float = 0f,
     val reception: Reception = Reception.Idle,
     val inbox: List<ReceivedMessage> = emptyList(),
+    val outgoing: Outgoing? = null,
+    val failedFrames: Int = 0,
     val error: String? = null,
+)
+
+/**
+ * The transmission currently being played.
+ *
+ * @property spectrogram what it looks like on air, for the send screen's preview.
+ * @property seconds playback duration.
+ */
+class Outgoing(
+    val spectrogram: List<FloatArray>,
+    val seconds: Double,
 )
 
 /** What the receiver is doing right now. */
@@ -62,6 +81,12 @@ class TransceiverViewModel(
     private val mutableState = MutableStateFlow(TransceiverState())
     val state: StateFlow<TransceiverState> = mutableState.asStateFlow()
 
+    private val spectrumColumns =
+        MutableSharedFlow<FloatArray>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /** Live spectrogram columns of the microphone signal while listening. */
+    val spectrum: SharedFlow<FloatArray> = spectrumColumns.asSharedFlow()
+
     private var listenJob: Job? = null
     private var nextMessageId = 0
 
@@ -81,14 +106,22 @@ class TransceiverViewModel(
             return
         }
         viewModelScope.launch {
-            mutableState.update { it.copy(sending = true, error = null) }
+            val transmission =
+                withContext(Dispatchers.Default) {
+                    Modulator(OUTPUT_SAMPLE_RATE).modulate(bytes, Payload.typeOf(payload), profile)
+                }
+            val outgoing =
+                Outgoing(
+                    spectrogram = Spectrogram.of(transmission.samples, OUTPUT_SAMPLE_RATE),
+                    seconds = transmission.samples.size.toDouble() / OUTPUT_SAMPLE_RATE,
+                )
+            mutableState.update { it.copy(sending = true, outgoing = outgoing, error = null) }
             try {
-                val transmission = Modulator(OUTPUT_SAMPLE_RATE).modulate(bytes, Payload.typeOf(payload), profile)
                 engine.play(transmission.samples, OUTPUT_SAMPLE_RATE)
                 // Let the room echo of our own signal fade before listening again.
                 delay(ECHO_TAIL_MILLIS)
             } finally {
-                mutableState.update { it.copy(sending = false) }
+                mutableState.update { it.copy(sending = false, outgoing = null) }
             }
         }
     }
@@ -108,6 +141,7 @@ class TransceiverViewModel(
         listenJob =
             viewModelScope.launch(Dispatchers.Default) {
                 var decoder: StreamingDecoder? = null
+                var spectrogram: Spectrogram? = null
                 engine
                     .capture()
                     .catch { e ->
@@ -118,6 +152,10 @@ class TransceiverViewModel(
                         val current =
                             decoder?.takeIf { it.sampleRate == chunk.sampleRate }
                                 ?: StreamingDecoder(chunk.sampleRate).also { decoder = it }
+                        val analyser =
+                            spectrogram?.takeIf { it.sampleRate == chunk.sampleRate }
+                                ?: Spectrogram(chunk.sampleRate).also { spectrogram = it }
+                        analyser.feed(chunk.samples).forEach(spectrumColumns::tryEmit)
                         if (state.value.sending) {
                             current.reset()
                             mutableState.update { it.copy(inputLevel = 0f, reception = Reception.Searching) }
@@ -158,7 +196,12 @@ class TransceiverViewModel(
                 mutableState.update { it.copy(inbox = listOf(message) + it.inbox, reception = Reception.Searching) }
             }
 
-            is DecoderEvent.FrameFailed -> mutableState.update { it.copy(reception = Reception.Searching) }
+            is DecoderEvent.FrameFailed ->
+                if (event.reason != DecoderEvent.FailureReason.InvalidHeader) {
+                    mutableState.update { it.copy(reception = Reception.Searching, failedFrames = it.failedFrames + 1) }
+                } else {
+                    mutableState.update { it.copy(reception = Reception.Searching) }
+                }
 
             is DecoderEvent.SyncFound, is DecoderEvent.HeaderDecoded -> Unit
         }
