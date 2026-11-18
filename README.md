@@ -148,6 +148,9 @@ This opens `http://localhost:8080`. Requires a browser with WasmGC: Chrome/Edge 
 Safari 18.2+. Microphone access only works on `https://` or `localhost`. Click anywhere once so the
 browser allows audio.
 
+> **Safari shows "SoundDrop could not start"?** Lockdown Mode turns WebAssembly off. Allow the site via
+> *Safari → Settings for This Website → uncheck Enable Lockdown Mode*, or use Chrome or Firefox.
+
 ### iOS
 
 Requirements: macOS with Xcode 16 or newer.
